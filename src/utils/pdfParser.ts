@@ -13,12 +13,15 @@ export interface WaypointEntry {
     isToc: boolean;
     isTod: boolean;
     isFir: boolean;     // true if this is a FIR/UIR boundary separator row
+    itt?: string;       // Initial True Track (or Magnetic Track)
+    dis?: string;       // Leg Distance (NM)
 }
 
 export interface ParsedFlightData {
     flightNumber: string;
     departure: string;
     arrival: string;
+    destTimezoneOffset: string; // e.g. "M0500", "P0300", "Z0000"
     // Performance
     tripFuel: string;
     rampFuel: string;
@@ -143,10 +146,21 @@ export const parseLidoPDF = async (file: File): Promise<ParsedFlightData> => {
                     .filter(e => !e.isFir)
                     .map(e => e.name);
 
+                // Extract destination timezone
+                // Look for patterns like P0300 OTHH/KIAD M0500 or just M0500 next to arrival ICAO
+                const destTzMatch = fullText.match(/([PMZ]\d{4})\s+[A-Z]{3,4}\s*\/\s*[A-Z]{3,4}\s+([PMZ]\d{4})/)
+                    || fullText.match(new RegExp(`${arrival}\\s+([PMZ]\\d{4})`));
+
+                let destTimezoneOffset = 'Z0000';
+                if (destTzMatch) {
+                    destTimezoneOffset = destTzMatch[2] || destTzMatch[1];
+                }
+
                 const data: ParsedFlightData = {
-                    flightNumber: extractRegex(fullText, /COPY\s+(QR\d+)/i) || (extractRegex(fullText, /QTR\d+[A-Z]?\/QR\d+/i)?.split('/')[1] || 'Unknown'),
+                    flightNumber: extractRegex(fullText, /(QTR\d+[A-Z]?)\/QR\d+/i) || extractRegex(fullText, /COPY\s+(QR\d+)/i) || 'Unknown',
                     departure,
                     arrival,
+                    destTimezoneOffset,
                     tripFuel: tripFuelStr,
                     rampFuel: calculatedRampFuel,
                     taxiFuel: taxiFuelStr,
@@ -247,6 +261,8 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
         return false;
     };
 
+    const IS_ITT = /^([TM]?\d{3})$/;
+
     let i = 0;
     const arrivalMatch = new RegExp('^' + arrivalICAO + '(/\\d+[A-Z]?)?$');
 
@@ -312,10 +328,21 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
                 let ctmRaw = '';
                 let rfobRaw = '';
                 let stmMinutes = 0;
+                let ittRaw = '';
+                let disRaw = '';
 
                 for (let j = i + 1; j < Math.min(i + 25, tokens.length); j++) {
                     const t = tokens[j].toUpperCase();
                     if (IS_STRUCTURAL_WPT(t)) break;
+
+                    // Look for ITT, which is usually a 3-digit number (e.g. 338 or T338 or M338) near the airway/waypoint
+                    // To avoid confusing it with flight levels or weights, we do this before parsing.
+                    if (!ittRaw && IS_ITT.test(t)) {
+                        ittRaw = t.replace(/[TM]/, '');
+                    } else if (!disRaw && /^\d{1,4}$/.test(t) && !IS_CTM.test(t)) {
+                        disRaw = t;
+                    }
+
                     if (IS_RFOB.test(t)) rfobRaw = t;
                     if (IS_CTM.test(t) && !ctmRaw) ctmRaw = t;
                 }
@@ -326,7 +353,7 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
                     stmMinutes = hh * 60 + mm;
                 }
 
-                entries.push({ name, stm: stmMinutes, rfob: rfobRaw ? parseFloat(rfobRaw) : 0, isToc, isTod, isFir: false });
+                entries.push({ name, stm: stmMinutes, rfob: rfobRaw ? parseFloat(rfobRaw) : 0, isToc, isTod, isFir: false, itt: ittRaw || '-', dis: disRaw || '-' });
             }
         }
         i++;

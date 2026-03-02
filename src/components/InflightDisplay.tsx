@@ -172,6 +172,34 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         return diff;
     };
 
+    const getLocalTime = (zuluTime: string | null | undefined, offsetStr: string): string => {
+        if (!zuluTime || zuluTime === '-') return '-';
+        const cleanT = zuluTime.replace(':', '');
+        if (cleanT.length !== 4) return zuluTime;
+
+        if (!offsetStr || offsetStr.length !== 5) return zuluTime;
+        const sign = offsetStr.charAt(0);
+        const hrs = parseInt(offsetStr.substring(1, 3), 10);
+        const mins = parseInt(offsetStr.substring(3, 5), 10);
+        if (isNaN(hrs) || isNaN(mins)) return zuluTime;
+
+        let diffMins = hrs * 60 + mins;
+        if (sign === 'M') diffMins = -diffMins;
+        else if (sign !== 'P' && sign !== 'Z') return zuluTime;
+
+        const h = parseInt(cleanT.substring(0, 2), 10);
+        const m = parseInt(cleanT.substring(2, 4), 10);
+
+        let totalMins = h * 60 + m + diffMins;
+        // Handle day wrapping
+        while (totalMins < 0) totalMins += 1440;
+        while (totalMins >= 1440) totalMins -= 1440;
+
+        const resH = Math.floor(totalMins / 60);
+        const resM = totalMins % 60;
+        return `${resH.toString().padStart(2, '0')}:${resM.toString().padStart(2, '0')}`;
+    };
+
     let globalEstAta = '';
     let lastAtaIdx = -1;
     for (let j = waypointEntries.length - 1; j >= 0; j--) {
@@ -294,6 +322,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                 <thead className="sticky top-0 z-10 bg-[#0a0a0a]">
                                     <tr className="bg-white/5 border-b border-white/5">
                                         <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">Waypoint</th>
+                                        <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">TRK/DIS</th>
                                         <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">PLN ETA</th>
                                         <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">ATA (Z)</th>
                                         <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">PLN Fuel</th>
@@ -336,18 +365,43 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                         )}
                                                     </div>
                                                 </td>
+                                                <td className="px-4 py-2 md:py-3">
+                                                    <div className="flex flex-col items-start justify-center font-mono text-[10px] md:text-xs">
+                                                        <span className="text-aviation-accent">{wp.isFir ? '-' : (wp.itt || '-')}</span>
+                                                        {!wp.isFir && wp.dis && (
+                                                            <span className="text-slate-500 text-[8px] md:text-[9px] mt-0.5">{wp.dis} NM</span>
+                                                        )}
+                                                    </div>
+                                                </td>
                                                 <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-aviation-warning font-bold">
                                                     {wp.isFir ? '-' : (calculateEta(takeoffTime, wp.stm) || '-')}
                                                 </td>
-                                                <td className="px-4 py-2 md:py-3">
+                                                <td className="px-4 py-2 md:py-3 relative group/ata">
                                                     {!wp.isFir && (
-                                                        <input
-                                                            type="text"
-                                                            placeholder="0000"
-                                                            value={input.ata}
-                                                            onChange={(e) => handleInputChange(idx, 'ata', e.target.value)}
-                                                            className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-aviation-accent w-16 focus:outline-none focus:border-aviation-accent/50 text-center"
-                                                        />
+                                                        <div className="flex items-center gap-1">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="0000"
+                                                                value={input.ata}
+                                                                onChange={(e) => handleInputChange(idx, 'ata', e.target.value)}
+                                                                className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-aviation-accent w-16 focus:outline-none focus:border-aviation-accent/50 text-center"
+                                                            />
+                                                            {(() => {
+                                                                if (!input.ata || input.ata.replace(':', '').length !== 4) return null;
+                                                                const plnEta = calculateEta(takeoffTime, wp.stm);
+                                                                if (!plnEta) return null;
+                                                                const diff = diffMinutes(input.ata, plnEta);
+                                                                if (diff === 0) return null;
+                                                                return (
+                                                                    <span className={cn(
+                                                                        "text-[9px] font-mono font-bold whitespace-nowrap",
+                                                                        diff > 0 ? "text-red-500" : "text-aviation-success"
+                                                                    )}>
+                                                                        {diff > 0 ? `+${diff}` : `-${Math.abs(diff)}`}
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </div>
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-slate-400">
@@ -379,19 +433,29 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                         </div>
 
                         <div className="grid grid-cols-3 gap-4 md:gap-6 p-4 bg-white/5 border-t border-white/5 shrink-0">
-                            <InflightStat
-                                label="DEST STA"
-                                value={flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
-                                warning
-                            />
+                            {(() => {
+                                const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
+                                const staFmt = flightData.sta.includes('/') ? `${staClean.substring(0, 2)}:${staClean.substring(2, 4)}` : flightData.sta;
+                                const localSta = getLocalTime(staFmt, flightData.destTimezoneOffset || '');
+                                return (
+                                    <InflightStat
+                                        label="DEST STA"
+                                        value={staFmt}
+                                        localTime={localSta}
+                                        warning
+                                    />
+                                );
+                            })()}
                             {(() => {
                                 const eta = calculateEta(takeoffTime, flightData.tripTime);
                                 const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
                                 const delay = diffMinutes(eta || '', staClean);
+                                const localEta = getLocalTime(eta, flightData.destTimezoneOffset || '');
                                 return (
                                     <InflightStat
                                         label="DEST ETA"
                                         value={eta || '-'}
+                                        localTime={localEta}
                                         error={eta ? delay > 0 : false}
                                         success={eta ? delay <= 0 : false}
                                         info={eta ? (delay === 0 ? "ON TIME" : delay > 0 ? `+${delay} MIN` : `-${Math.abs(delay)} MIN`) : undefined}
@@ -401,10 +465,12 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                             {(() => {
                                 const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
                                 const delay = diffMinutes(globalEstAta || '', staClean);
+                                const localAta = getLocalTime(globalEstAta, flightData.destTimezoneOffset || '');
                                 return (
                                     <InflightStat
                                         label="DEST ATA (EST)"
                                         value={globalEstAta || '-'}
+                                        localTime={localAta}
                                         error={globalEstAta ? delay > 0 : false}
                                         success={globalEstAta ? delay <= 0 : false}
                                         info={globalEstAta ? (delay === 0 ? "ON TIME" : delay > 0 ? `+${delay} MIN` : `-${Math.abs(delay)} MIN`) : undefined}
@@ -496,16 +562,23 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
     );
 };
 
-function InflightStat({ label, value, warning, success, error, info }: { label: string, value: string, warning?: boolean, success?: boolean, error?: boolean, info?: string }) {
+function InflightStat({ label, value, localTime, warning, success, error, info }: { label: string, value: string, localTime?: string, warning?: boolean, success?: boolean, error?: boolean, info?: string }) {
     return (
-        <div className="flex flex-col items-center justify-center p-2">
+        <div className="flex flex-col items-center justify-center p-2 relative">
             <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{label}</span>
-            <span className={cn(
-                "text-sm md:text-xl font-mono font-bold leading-none",
-                error ? "text-red-500" : success ? "text-aviation-success" : warning ? "text-aviation-warning" : "text-aviation-accent"
-            )}>
-                {value}
-            </span>
+            <div className="flex flex-col items-center">
+                <span className={cn(
+                    "text-sm md:text-xl font-mono font-bold leading-none",
+                    error ? "text-red-500" : success ? "text-aviation-success" : warning ? "text-aviation-warning" : "text-aviation-accent"
+                )}>
+                    {value}
+                </span>
+                {localTime && localTime !== '-' && (
+                    <span className="text-xs md:text-sm font-mono font-medium text-slate-400 mt-0.5 leading-none">
+                        L: {localTime}
+                    </span>
+                )}
+            </div>
             {info && (
                 <span className={cn(
                     "text-[8px] md:text-[9px] font-bold mt-1",

@@ -39,6 +39,7 @@ function App() {
       activeSection={activeSection}
       onSectionChange={setActiveSection}
       route={routeLabel}
+      flightNumber={flightData?.flightNumber}
     >
       {renderContent()}
     </MainLayout>
