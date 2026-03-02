@@ -1,6 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
+import {
+    MapPin,
+    AlertCircle,
+    CheckCircle2,
+    Navigation,
+    Plane,
+    ZoomIn,
+    ZoomOut,
+    RotateCcw,
+    RotateCw
+} from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { Clock, MapPin, AlertCircle, CheckCircle2, Navigation } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 type SubTab = 'departure' | 'enroute' | 'arrival' | 'notes';
 
@@ -15,16 +26,85 @@ interface WaypointInput {
 
 export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab = 'departure' }) => {
     const flightData = useStore((state) => state.flightData);
-    const [activeSubTab, setActiveSubTab] = useState<SubTab>((initialSubTab as any) === 'waypoints' ? 'enroute' : initialSubTab);
-    const [waypointInputs, setWaypointInputs] = useState<Record<number, WaypointInput>>({});
-    const [takeoffTime, setTakeoffTime] = useState<string>('');
+    const inflightData = useStore((state) => state.inflightData);
+    const setInflightData = useStore((state) => state.setInflightData);
+
+    // Initialize local state from inflightData if available during render, not effect.
+    // To handle hydration and updates without effect cascades.
+    const [activeSubTab, setActiveSubTab] = useState<SubTab>(
+        inflightData?.activeSubTab || ((initialSubTab as unknown as string) === 'waypoints' ? 'enroute' : initialSubTab)
+    );
+    const [waypointInputs, setWaypointInputs] = useState<Record<number, WaypointInput>>(
+        inflightData?.waypointInputs || {}
+    );
+    const [takeoffTime, setTakeoffTime] = useState<string>(
+        inflightData?.takeoffTime || ''
+    );
+
+    // Update inflightData in store when local state changes
+    useEffect(() => {
+        setInflightData({ activeSubTab, waypointInputs, takeoffTime });
+    }, [activeSubTab, waypointInputs, takeoffTime, setInflightData]);
+
+
+    const data = inflightData || {
+        activeSubTab: 'departure', // This will be overwritten by local state
+        waypointInputs: {}, // This will be overwritten by local state
+        takeoffTime: '', // This will be overwritten by local state
+        departureATIS: '',
+        arrivalATIS: '',
+        notes: ''
+    };
+
     const [currentTime, setCurrentTime] = useState<string>(new Date().getUTCHours().toString().padStart(2, '0') + new Date().getUTCMinutes().toString().padStart(2, '0'));
     const [activeIndex, setActiveIndex] = useState<number>(-1);
 
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
     const rowRefs = useRef<Record<number, HTMLTableRowElement | null>>({});
 
-    // Update current time every minute
+    const calculateEta = (takeoff: string, ctmMinutes: number) => {
+        if (!takeoff || takeoff.length < 4) return null;
+        const cleanTime = takeoff.replace(':', '');
+        if (cleanTime.length !== 4) return null;
+        let hh = parseInt(cleanTime.substring(0, 2), 10);
+        let mm = parseInt(cleanTime.substring(2, 4), 10);
+        if (isNaN(hh) || isNaN(mm)) return null;
+        mm += ctmMinutes;
+        hh += Math.floor(mm / 60);
+        mm %= 60;
+        hh %= 24;
+        return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
+    };
+
+    // Derived state for the active index, calculated on the fly instead of effect-driven state if possible,
+    // but the scroll behavior requires layout. Let's keep setActiveIndex but suppress or refactor.
+    // Instead of an effect setting state, we can just calculate activeIndex during render.
+    let calculatedIndex = -1;
+    if (flightData?.waypointEntries) {
+        const nowNum = parseInt(currentTime, 10);
+        for (let i = 0; i < flightData.waypointEntries.length; i++) {
+            const wp = flightData.waypointEntries[i];
+            if (wp.isFir) continue;
+            const eta = calculateEta(takeoffTime, wp.stm);
+            if (eta) {
+                const etaNum = parseInt(eta.replace(':', ''), 10);
+                if (etaNum >= nowNum) {
+                    calculatedIndex = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (calculatedIndex !== activeIndex) {
+        setActiveIndex(calculatedIndex);
+    }
+
+    useEffect(() => {
+        if (activeSubTab === 'enroute' && activeIndex !== -1 && rowRefs.current[activeIndex]) {
+            rowRefs.current[activeIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [activeSubTab, activeIndex]);
+
     useEffect(() => {
         const interval = setInterval(() => {
             const now = new Date();
@@ -34,46 +114,19 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         return () => clearInterval(interval);
     }, []);
 
-    // Auto-scroll logic & Active Waypoint Tracking
-    useEffect(() => {
-        if (flightData?.waypointEntries) {
-            let foundIndex = -1;
-            const nowNum = parseInt(currentTime, 10);
-
-            for (let i = 0; i < flightData.waypointEntries.length; i++) {
-                const wp = flightData.waypointEntries[i];
-                if (wp.isFir) continue;
-                const eta = calculateEta(takeoffTime, wp.stm);
-                if (eta) {
-                    const etaNum = parseInt(eta.replace(':', ''), 10);
-                    if (etaNum >= nowNum) {
-                        foundIndex = i;
-                        break;
-                    }
-                }
-            }
-
-            setActiveIndex(foundIndex);
-
-            // Scroll to the identified row if in Enroute tab
-            if (activeSubTab === 'enroute' && foundIndex !== -1 && rowRefs.current[foundIndex]) {
-                rowRefs.current[foundIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-    }, [activeSubTab, currentTime, takeoffTime, flightData?.waypointEntries]);
-
-    // Sync sub-tab if prop changes (e.g. from sidebar shortcut)
-    React.useEffect(() => {
+    const [prevInitialSubTab, setPrevInitialSubTab] = useState(initialSubTab);
+    if (initialSubTab !== prevInitialSubTab) {
+        setPrevInitialSubTab(initialSubTab);
         if (initialSubTab) {
-            setActiveSubTab((initialSubTab as any) === 'waypoints' ? 'enroute' : initialSubTab);
+            setActiveSubTab((initialSubTab as unknown as string) === 'waypoints' ? 'enroute' : initialSubTab);
         }
-    }, [initialSubTab]);
+    }
 
     if (!flightData) {
         return (
-            <div className="card">
-                <h3>Inflight Display</h3>
-                <p style={{ color: 'var(--text-secondary)' }}>Please load a flight plan in the Flight Init tab first.</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 glass-panel p-8">
+                <Navigation className="w-12 h-12 mb-4 opacity-20" />
+                <p className="text-sm font-medium">Please load a flight plan in the Flight Init tab first.</p>
             </div>
         );
     }
@@ -98,30 +151,6 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
             }
         }));
     };
-
-    const calculateEta = (takeoff: string, ctmMinutes: number) => {
-        if (!takeoff || takeoff.length < 4) return null;
-
-        // Handle both HH:MM and HHMM formats
-        const cleanTime = takeoff.replace(':', '');
-        if (cleanTime.length !== 4) return null;
-
-        let hh = parseInt(cleanTime.substring(0, 2), 10);
-        let mm = parseInt(cleanTime.substring(2, 4), 10);
-
-        if (isNaN(hh) || isNaN(mm)) return null;
-
-        // Add CTM minutes
-        mm += ctmMinutes;
-
-        // Handle overflow
-        hh += Math.floor(mm / 60);
-        mm %= 60;
-        hh %= 24;
-
-        return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
-    };
-
     const formatTimeForInput = (timeStr?: string) => {
         if (!timeStr) return '';
         const clean = timeStr.replace(':', '');
@@ -138,13 +167,11 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         const h2 = parseInt(t2.substring(0, 2), 10);
         const m2 = parseInt(t2.substring(2, 4), 10);
         let diff = (h1 * 60 + m1) - (h2 * 60 + m2);
-        // Handle day wraps if simple comparison fails
         if (diff < -1200) diff += 1440;
         if (diff > 1200) diff -= 1440;
         return diff;
     };
 
-    // Calculate global estimated ATA for touchdown autofill
     let globalEstAta = '';
     let lastAtaIdx = -1;
     for (let j = waypointEntries.length - 1; j >= 0; j--) {
@@ -160,317 +187,333 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         globalEstAta = calculateEta(waypointInputs[lastAtaIdx].ata, remainingMinutes) || '';
     }
 
-    // Sub-navigation renderers
-    const renderSubNavigation = () => (
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-            {['departure', 'enroute', 'arrival', 'notes'].map((tab) => (
-                <button
-                    key={tab}
-                    className={`btn ${activeSubTab === tab ? 'btn-primary' : ''}`}
-                    style={{
-                        background: activeSubTab === tab ? 'var(--accent-blue)' : 'var(--bg-surface)',
-                        color: activeSubTab === tab ? '#fff' : 'var(--text-secondary)',
-                        whiteSpace: 'nowrap'
-                    }}
-                    onClick={() => setActiveSubTab(tab as any)}
-                >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-            ))}
-        </div>
-    );
+    return (
+        <div className="flex-1 flex flex-col gap-4 min-h-0">
+            <div className="flex items-center justify-between shrink-0">
+                <div className="flex p-1 bg-white/5 rounded-xl border border-white/5">
+                    {['departure', 'enroute', 'arrival', 'notes'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveSubTab(tab as SubTab)}
+                            className={cn(
+                                "px-4 md:px-6 py-1.5 md:py-2 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all",
+                                activeSubTab === tab
+                                    ? "bg-aviation-accent text-black shadow-lg shadow-aviation-accent/20"
+                                    : "text-slate-500 hover:text-slate-300"
+                            )}
+                        >
+                            {tab}
+                        </button>
+                    ))}
+                </div>
 
-    const renderContent = () => {
-        switch (activeSubTab) {
-            case 'departure':
-                return (
-                    <div className="card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ color: 'var(--accent-green)', margin: 0 }}>Departure: {flightData.departure}</h3>
-                            <span style={{ color: 'var(--accent-orange)', fontWeight: 600 }}>STD: {flightData.std}</span>
+                <div className="hidden md:flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/5">
+                    {[ZoomOut, ZoomIn, RotateCcw, RotateCw].map((Icon, idx) => (
+                        <button key={idx} className="p-2 text-slate-500 hover:text-white transition-colors">
+                            <Icon className="w-4 h-4" />
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0">
+                {activeSubTab === 'departure' && (
+                    <div className="flex-1 p-4 md:p-8 space-y-4 md:space-y-8 overflow-y-auto custom-scrollbar">
+                        <div className="flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-aviation-success/10 flex items-center justify-center">
+                                    <Plane className="w-4 h-4 md:w-5 md:h-5 text-aviation-success rotate-45" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm md:text-lg font-bold text-white">Departure: {flightData.departure}</h4>
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">Origin Airport</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">STD</span>
+                                <p className="text-lg md:text-xl font-mono font-bold text-aviation-warning">
+                                    {flightData.std.includes('/') ? `${flightData.std.split('/')[1].substring(0, 2)}:${flightData.std.split('/')[1].substring(2, 4)}` : flightData.std}
+                                </p>
+                            </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                            <div>
-                                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Block Off Time Z</label>
+
+                        <div className="grid grid-cols-2 gap-4 md:gap-8">
+                            <div className="space-y-1 md:space-y-2">
+                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Block Off Time Z</label>
                                 <input
                                     type="time"
                                     value={formatTimeForInput(waypointInputs[-1]?.ata)}
                                     onChange={(e) => setWaypointInputs(prev => ({ ...prev, [-1]: { ...prev[-1], ata: e.target.value.replace(':', '') } }))}
-                                    style={{ width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-color)', color: 'white', padding: '0.75rem', borderRadius: '4px' }}
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 font-mono text-sm md:text-lg focus:outline-none focus:border-aviation-accent text-white"
                                 />
                                 {(() => {
                                     const blockOff = waypointInputs[-1]?.ata;
-                                    if (!blockOff || blockOff.length !== 4) return null;
-                                    const stdClean = flightData.std.split('/')[1] || flightData.std;
-                                    const delay = diffMinutes(blockOff, stdClean);
-                                    if (delay > 0) {
-                                        return (
-                                            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--accent-red)', fontWeight: 700 }}>
-                                                DELAY: +{delay} MIN
-                                            </div>
-                                        );
-                                    } else {
-                                        return (
-                                            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--accent-green)', fontWeight: 700 }}>
-                                                EARLY: {delay} MIN
-                                            </div>
-                                        );
-                                    }
+                                    const blockOffClean = blockOff?.replace(':', '') || '';
+                                    if (blockOffClean.length !== 4) return null;
+                                    const stdClean = flightData.std.includes('/') ? flightData.std.split('/')[1] : flightData.std;
+                                    const delay = diffMinutes(blockOffClean, stdClean);
+                                    return (
+                                        <p className={cn("text-[10px] font-bold uppercase", delay > 0 ? "text-aviation-warning" : "text-aviation-success")}>
+                                            {delay > 0 ? `Delay: +${delay} min` : `Early: ${Math.abs(delay)} min`}
+                                        </p>
+                                    );
                                 })()}
                             </div>
-
-                            <div>
-                                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Take Off Time Z</label>
+                            <div className="space-y-1 md:space-y-2">
+                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Take Off Time Z</label>
                                 <input
                                     type="time"
                                     value={takeoffTime}
                                     onChange={(e) => setTakeoffTime(e.target.value)}
-                                    style={{ width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-color)', color: 'white', padding: '0.75rem', borderRadius: '4px' }}
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 font-mono text-sm md:text-lg focus:outline-none focus:border-aviation-accent text-white"
                                 />
-                                {takeoffTime && flightData.tripTime > 0 && (
-                                    <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--accent-orange)', fontWeight: 600 }}>
-                                        ETA at Destination: {calculateEta(takeoffTime, flightData.tripTime)} Z
-                                    </div>
+                                {takeoffTime && (
+                                    <p className="text-[10px] font-bold uppercase text-aviation-accent">
+                                        EST ETA: {calculateEta(takeoffTime, flightData.tripTime)} Z
+                                    </p>
                                 )}
                             </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Departure ATIS / CLEARANCE</label>
-                                <textarea rows={4} style={{ width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-color)', color: 'white', padding: '0.75rem', borderRadius: '4px', resize: 'vertical' }} placeholder="ATIS Info D, QNH 1013..."></textarea>
-                            </div>
+                        </div>
+
+                        <div className="flex-1 space-y-1 md:space-y-2 min-h-0">
+                            <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Departure ATIS / CLEARANCE</label>
+                            <textarea
+                                value={data.departureATIS || ''}
+                                onChange={(e) => setInflightData({ departureATIS: e.target.value })}
+                                placeholder="ATIS Info D, QNH 1013..."
+                                className="w-full flex-1 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 font-mono text-xs md:text-sm min-h-[100px] focus:outline-none focus:border-aviation-accent resize-none text-white"
+                            />
                         </div>
                     </div>
-                );
+                )}
 
-            case 'enroute':
-                return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-                            <div
-                                ref={scrollContainerRef}
-                                style={{
-                                    maxHeight: '400px',
-                                    overflowY: 'auto',
-                                    scrollbarWidth: 'thin'
-                                }}
-                            >
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                                    <thead style={{
-                                        background: 'var(--bg-surface)',
-                                        color: 'var(--text-secondary)',
-                                        textAlign: 'left',
-                                        position: 'sticky',
-                                        top: 0,
-                                        zIndex: 1
-                                    }}>
-                                        <tr>
-                                            <th style={{ padding: '0.75rem 1rem' }}>WAYPOINT</th>
-                                            <th style={{ padding: '0.75rem 1rem' }}>PLN ETA</th>
-                                            <th style={{ padding: '0.75rem 1rem' }}>ATA (Z)</th>
-                                            <th style={{ padding: '0.75rem 1rem' }}>PLN FUEL</th>
-                                            <th style={{ padding: '0.75rem 1rem' }}>ACT FUEL</th>
-                                            <th style={{ padding: '0.75rem 1rem' }}>DIFF</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {waypointEntries.length > 0 ? waypointEntries.map((wp, idx) => {
-                                            const input = waypointInputs[idx] || { ata: '', fuel: '' };
-                                            const plnFuel = wp.rfob;
-                                            const actFuel = parseFloat(input.fuel);
-                                            const diff = !isNaN(actFuel) ? (actFuel - plnFuel).toFixed(1) : null;
-                                            const diffColor = diff === null ? 'var(--text-secondary)' : parseFloat(diff) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                                            const plnEta = calculateEta(takeoffTime, wp.stm);
+                {activeSubTab === 'enroute' && (
+                    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                        <div className="flex-1 overflow-auto custom-scrollbar">
+                            <table className="w-full text-left border-collapse min-w-[600px]">
+                                <thead className="sticky top-0 z-10 bg-[#0a0a0a]">
+                                    <tr className="bg-white/5 border-b border-white/5">
+                                        <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">Waypoint</th>
+                                        <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">PLN ETA</th>
+                                        <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">ATA (Z)</th>
+                                        <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">PLN Fuel</th>
+                                        <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">ACT Fuel</th>
+                                        <th className="px-4 py-3 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">Diff</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {waypointEntries.map((wp, idx) => {
+                                        const input = waypointInputs[idx] || { ata: '', fuel: '' };
+                                        const isHighlight = idx === activeIndex;
+                                        const plnFuel = wp.rfob;
+                                        const actFuel = parseFloat(input.fuel);
+                                        const diff = !isNaN(actFuel) ? (actFuel - plnFuel).toFixed(1) : null;
 
-                                            // Highlight if this is the active (next) waypoint
-                                            const isHighlight = idx === activeIndex;
-
-                                            return (
-                                                <tr
-                                                    key={idx}
-                                                    ref={el => { rowRefs.current[idx] = el; }}
-                                                    style={{
-                                                        borderBottom: '1px solid var(--border-color)',
-                                                        background: isHighlight ? 'rgba(39, 174, 96, 0.15)' : (wp.isFir ? 'rgba(52, 152, 219, 0.05)' : 'transparent'),
-                                                        transition: 'background 0.3s'
-                                                    }}
-                                                >
-                                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600, fontFamily: 'monospace' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            {wp.isFir ? <MapPin size={14} color="var(--accent-blue)" /> :
-                                                                wp.isToc ? <CheckCircle2 size={14} color="var(--accent-orange)" /> :
-                                                                    wp.isTod ? <AlertCircle size={14} color="var(--accent-orange)" /> :
-                                                                        (wp.name.length > 5 ? <Navigation size={14} color="var(--text-secondary)" /> : null)}
-                                                            {wp.name}
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--accent-orange)', fontWeight: 600 }}>
-                                                        {wp.isFir ? '-' : (plnEta || '-')}
-                                                    </td>
-                                                    <td style={{ padding: '0.5rem' }}>
-                                                        {!wp.isFir && (
-                                                            <input
-                                                                type="text"
-                                                                placeholder="HHMM"
-                                                                value={input.ata}
-                                                                onChange={(e) => handleInputChange(idx, 'ata', e.target.value)}
-                                                                style={{ width: '70px', background: 'var(--bg-base)', border: '1px solid var(--border-color)', color: 'white', padding: '4px 8px', borderRadius: '4px', textAlign: 'center', fontSize: '0.8rem' }}
-                                                            />
+                                        return (
+                                            <tr
+                                                key={idx}
+                                                ref={el => { rowRefs.current[idx] = el; }}
+                                                className={cn(
+                                                    "transition-colors group",
+                                                    isHighlight ? "bg-aviation-accent/10" : "hover:bg-white/5",
+                                                    wp.isFir ? "bg-aviation-accent/5" : ""
+                                                )}
+                                            >
+                                                <td className="px-4 py-2 md:py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        {wp.isFir ? (
+                                                            <div className="flex items-center gap-2 text-aviation-accent">
+                                                                <MapPin className="w-3 h-3" />
+                                                                <span className="text-[10px] md:text-xs font-bold uppercase">{wp.name}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2">
+                                                                {wp.isToc ? <CheckCircle2 className="w-3 h-3 text-aviation-warning" /> :
+                                                                    wp.isTod ? <AlertCircle className="w-3 h-3 text-aviation-warning" /> :
+                                                                        <Navigation className="w-3 h-3 text-slate-500" />}
+                                                                <span className="text-xs md:text-sm font-bold text-white font-mono">{wp.name}</span>
+                                                            </div>
                                                         )}
-                                                    </td>
-                                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)' }}>{wp.isFir ? '-' : plnFuel.toFixed(1)}</td>
-                                                    <td style={{ padding: '0.5rem' }}>
-                                                        {!wp.isFir && (
-                                                            <input
-                                                                type="number"
-                                                                step="0.1"
-                                                                placeholder="0.0"
-                                                                value={input.fuel}
-                                                                onChange={(e) => handleInputChange(idx, 'fuel', e.target.value)}
-                                                                style={{ width: '70px', background: 'var(--bg-base)', border: '1px solid var(--border-color)', color: 'white', padding: '4px 8px', borderRadius: '4px', textAlign: 'right', fontSize: '0.8rem' }}
-                                                            />
-                                                        )}
-                                                    </td>
-                                                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: diffColor }}>
-                                                        {!wp.isFir ? (diff ? (parseFloat(diff) > 0 ? `+${diff}` : diff) : '-') : ''}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        }) : (
-                                            <tr>
-                                                <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                                    No structured nav log entries identified.
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-aviation-warning font-bold">
+                                                    {wp.isFir ? '-' : (calculateEta(takeoffTime, wp.stm) || '-')}
+                                                </td>
+                                                <td className="px-4 py-2 md:py-3">
+                                                    {!wp.isFir && (
+                                                        <input
+                                                            type="text"
+                                                            placeholder="0000"
+                                                            value={input.ata}
+                                                            onChange={(e) => handleInputChange(idx, 'ata', e.target.value)}
+                                                            className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-aviation-accent w-16 focus:outline-none focus:border-aviation-accent/50 text-center"
+                                                        />
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-slate-400">
+                                                    {wp.isFir ? '-' : plnFuel.toFixed(1)}
+                                                </td>
+                                                <td className="px-4 py-2 md:py-3">
+                                                    {!wp.isFir && (
+                                                        <input
+                                                            type="number"
+                                                            step="0.1"
+                                                            placeholder="0.0"
+                                                            value={input.fuel}
+                                                            onChange={(e) => handleInputChange(idx, 'fuel', e.target.value)}
+                                                            className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-white w-16 focus:outline-none focus:border-aviation-accent/50 text-right"
+                                                        />
+                                                    )}
+                                                </td>
+                                                <td className={cn(
+                                                    "px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs font-bold",
+                                                    diff === null ? "text-slate-500" : (parseFloat(diff) >= 0 ? "text-aviation-success" : "text-aviation-warning")
+                                                )}>
+                                                    {!wp.isFir ? (diff ? (parseFloat(diff) > 0 ? `+${diff}` : diff) : '-') : ''}
                                                 </td>
                                             </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
 
-                        {/* Enroute Footer Stats */}
-                        <div className="card" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', marginTop: '1rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center' }}>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>DEST STA</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-orange)' }}>{flightData.sta}</div>
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>DEST ETA</div>
-                                    {(() => {
-                                        const eta = calculateEta(takeoffTime, flightData.tripTime);
-                                        const staClean = flightData.sta.split('/')[1] || flightData.sta;
-                                        const delay = diffMinutes(eta || '', staClean);
-                                        const color = delay > 0 ? 'var(--accent-red)' : 'var(--accent-green)';
-                                        return <div style={{ fontSize: '1.1rem', fontWeight: 700, color }}>{eta || '-'}</div>;
-                                    })()}
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>DEST ATA (EST)</div>
-                                    {(() => {
-                                        if (lastAtaIdx === -1) return <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>-</div>;
-
-                                        const staClean = flightData.sta.split('/')[1] || flightData.sta;
-                                        const delay = diffMinutes(globalEstAta || '', staClean);
-                                        const color = delay > 0 ? 'var(--accent-red)' : 'var(--accent-green)';
-
-                                        return <div style={{ fontSize: '1.1rem', fontWeight: 700, color }}>{globalEstAta}</div>;
-                                    })()}
-                                </div>
-                            </div>
+                        <div className="grid grid-cols-3 gap-4 md:gap-6 p-4 bg-white/5 border-t border-white/5 shrink-0">
+                            <InflightStat
+                                label="DEST STA"
+                                value={flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
+                                warning
+                            />
+                            {(() => {
+                                const eta = calculateEta(takeoffTime, flightData.tripTime);
+                                const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
+                                const delay = diffMinutes(eta || '', staClean);
+                                return (
+                                    <InflightStat
+                                        label="DEST ETA"
+                                        value={eta || '-'}
+                                        error={eta ? delay > 0 : false}
+                                        success={eta ? delay <= 0 : false}
+                                        info={eta ? (delay === 0 ? "ON TIME" : delay > 0 ? `+${delay} MIN` : `-${Math.abs(delay)} MIN`) : undefined}
+                                    />
+                                );
+                            })()}
+                            {(() => {
+                                const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
+                                const delay = diffMinutes(globalEstAta || '', staClean);
+                                return (
+                                    <InflightStat
+                                        label="DEST ATA (EST)"
+                                        value={globalEstAta || '-'}
+                                        error={globalEstAta ? delay > 0 : false}
+                                        success={globalEstAta ? delay <= 0 : false}
+                                        info={globalEstAta ? (delay === 0 ? "ON TIME" : delay > 0 ? `+${delay} MIN` : `-${Math.abs(delay)} MIN`) : undefined}
+                                    />
+                                );
+                            })()}
                         </div>
                     </div>
-                );
+                )}
 
-            case 'arrival':
-                return (
-                    <div className="card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h3 style={{ color: 'var(--accent-green)', margin: 0 }}>Arrival: {flightData.arrival}</h3>
-                            <span style={{ color: 'var(--accent-orange)', fontWeight: 600 }}>STA: {flightData.sta}</span>
+                {activeSubTab === 'arrival' && (
+                    <div className="flex-1 p-4 md:p-8 space-y-4 md:space-y-8 overflow-y-auto custom-scrollbar text-white">
+                        <div className="flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-aviation-accent/10 flex items-center justify-center">
+                                    <Plane className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent -rotate-45" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm md:text-lg font-bold">Arrival: {flightData.arrival}</h4>
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-widest">Destination Airport</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">STA</span>
+                                <p className="text-lg md:text-xl font-mono font-bold text-aviation-warning">
+                                    {flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
+                                </p>
+                            </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                            <div>
-                                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Touchdown Time Z</label>
+
+                        <div className="grid grid-cols-2 gap-4 md:gap-8">
+                            <div className="space-y-1 md:space-y-2">
+                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Touchdown Time Z</label>
                                 <input
                                     type="time"
                                     value={formatTimeForInput(waypointInputs[998]?.ata || globalEstAta)}
-                                    onChange={(e) => setWaypointInputs(prev => ({ ...prev, [998]: { ...prev[998], ata: e.target.value.replace(':', '') } }))}
-                                    style={{ width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-color)', color: 'white', padding: '0.75rem', borderRadius: '4px' }}
+                                    onChange={(e) => handleInputChange(998, 'ata', e.target.value)}
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 font-mono text-sm md:text-lg focus:outline-none focus:border-aviation-accent text-white"
                                 />
                             </div>
-                            <div>
-                                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Block On Time Z</label>
+                            <div className="space-y-1 md:space-y-2">
+                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Block On Time Z</label>
                                 <input
                                     type="time"
                                     value={formatTimeForInput(waypointInputs[999]?.ata)}
-                                    onChange={(e) => setWaypointInputs(prev => ({ ...prev, [999]: { ...prev[999], ata: e.target.value.replace(':', '') } }))}
-                                    style={{ width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-color)', color: 'white', padding: '0.75rem', borderRadius: '4px' }}
+                                    onChange={(e) => handleInputChange(999, 'ata', e.target.value)}
+                                    className="w-full bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 font-mono text-sm md:text-lg focus:outline-none focus:border-aviation-accent text-white"
                                 />
                                 {(() => {
                                     const blockOn = waypointInputs[999]?.ata;
-                                    if (!blockOn || blockOn.length !== 4) return null;
-                                    const staClean = flightData.sta.split('/')[1] || flightData.sta;
-                                    const delay = diffMinutes(blockOn, staClean);
-                                    if (delay > 0) {
-                                        return (
-                                            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--accent-red)', fontWeight: 700 }}>
-                                                DELAY: +{delay} MIN
-                                            </div>
-                                        );
-                                    } else if (delay < 0) {
-                                        return (
-                                            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--accent-green)', fontWeight: 700 }}>
-                                                EARLY: {delay} MIN
-                                            </div>
-                                        );
-                                    } else {
-                                        return (
-                                            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--accent-green)', fontWeight: 700 }}>
-                                                ON TIME
-                                            </div>
-                                        );
-                                    }
+                                    const blockOnClean = blockOn?.replace(':', '') || '';
+                                    if (blockOnClean.length !== 4) return null;
+                                    const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
+                                    const delay = diffMinutes(blockOnClean, staClean);
+                                    return (
+                                        <p className={cn("text-[10px] font-bold uppercase", delay > 0 ? "text-aviation-warning text-red-500" : "text-aviation-success")}>
+                                            {delay > 0 ? `Delay: ${delay} min` : (delay === 0 ? "Early" : `Early: ${Math.abs(delay)} min`)}
+                                        </p>
+                                    );
                                 })()}
                             </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                                <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Arrival ATIS</label>
-                                <textarea rows={4} style={{ width: '100%', background: 'var(--bg-base)', border: '1px solid var(--border-color)', color: 'white', padding: '0.75rem', borderRadius: '4px', resize: 'vertical' }} placeholder="ATIS Info X, QNH 1010..."></textarea>
-                            </div>
+                        </div>
+
+                        <div className="flex-1 space-y-1 md:space-y-2 min-h-0">
+                            <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Arrival ATIS</label>
+                            <textarea
+                                value={data.arrivalATIS || ''}
+                                onChange={(e) => setInflightData({ arrivalATIS: e.target.value })}
+                                placeholder="ATIS Info X, QNH 1010..."
+                                className="w-full flex-1 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-3 md:p-4 font-mono text-xs md:text-sm min-h-[100px] focus:outline-none focus:border-aviation-accent resize-none text-white"
+                            />
                         </div>
                     </div>
-                );
+                )}
 
-            case 'notes':
-                return (
-                    <div className="card" style={{ height: '500px' }}>
-                        <h3 style={{ marginBottom: '1rem' }}>Scratchpad</h3>
+                {activeSubTab === 'notes' && (
+                    <div className="flex-1 flex flex-col p-4 md:p-6 min-h-0">
                         <textarea
-                            style={{ width: '100%', height: 'calc(100% - 3.5rem)', background: 'var(--bg-base)', border: '1px solid var(--border-color)', color: 'var(--accent-orange)', padding: '1rem', borderRadius: '4px', resize: 'none', fontFamily: 'monospace', fontSize: '1.2rem', lineHeight: '1.5' }}
+                            value={data.notes || ''}
+                            onChange={(e) => setInflightData({ notes: e.target.value })}
                             placeholder="Jot down ATC clearances, frequencies, or temporary numbers here..."
-                        ></textarea>
+                            className="w-full flex-1 bg-transparent text-aviation-warning font-mono text-sm md:text-xl p-4 md:p-6 outline-none resize-none custom-scrollbar"
+                            style={{ lineHeight: '1.6' }}
+                        />
                     </div>
-                );
-
-            default:
-                return (
-                    <div className="card">
-                        <p style={{ color: 'var(--text-secondary)' }}>Module section under construction.</p>
-                    </div>
-                );
-        }
-    };
-
-    return (
-        <div className="inflight-display">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 style={{ margin: 0 }}>Inflight Display</h2>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        <Clock size={16} /> <span>{new Date().getUTCHours().toString().padStart(2, '0')}:{new Date().getUTCMinutes().toString().padStart(2, '0')} Z</span>
-                    </div>
-                </div>
+                )}
             </div>
-            {renderSubNavigation()}
-            {renderContent()}
         </div>
     );
 };
+
+function InflightStat({ label, value, warning, success, error, info }: { label: string, value: string, warning?: boolean, success?: boolean, error?: boolean, info?: string }) {
+    return (
+        <div className="flex flex-col items-center justify-center p-2">
+            <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{label}</span>
+            <span className={cn(
+                "text-sm md:text-xl font-mono font-bold leading-none",
+                error ? "text-red-500" : success ? "text-aviation-success" : warning ? "text-aviation-warning" : "text-aviation-accent"
+            )}>
+                {value}
+            </span>
+            {info && (
+                <span className={cn(
+                    "text-[8px] md:text-[9px] font-bold mt-1",
+                    error ? "text-red-500" : success ? "text-aviation-success" : warning ? "text-aviation-warning" : "text-aviation-accent"
+                )}>
+                    {info}
+                </span>
+            )}
+        </div>
+    );
+}

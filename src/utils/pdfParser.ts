@@ -71,14 +71,14 @@ export const parseLidoPDF = async (file: File): Promise<ParsedFlightData> => {
                 for (let i = 1; i <= pdf.numPages; i++) {
                     const page = await pdf.getPage(i);
                     const textContent = await page.getTextContent();
-                    const pageText = textContent.items.map((item: any) => item.str).join(' ');
+                    const pageText = textContent.items.map((item: unknown) => (item as { str?: string }).str || '').join(' ');
                     fullText += pageText + ' ';
                 }
 
                 // IMPROVED ICAO EXTRACTION: Look for [A-Z]{4}/[A-Z]{4} patterns flexibly
                 // Specifically look for the DOH-ISB or OTHH/OPIS patterns
                 const icaoPairMatch = fullText.match(/([A-Z]{4})\s*\/\s*([A-Z]{4})/)
-                    || fullText.match(/([A-Z]{3,4})\-([A-Z]{3,4})\s+Reg/);
+                    || fullText.match(/([A-Z]{3,4})-([A-Z]{3,4})\s+Reg/);
 
                 let departure = 'Unknown';
                 let arrival = 'Unknown';
@@ -205,7 +205,7 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
     const IS_ETOPS_PATTERN = /^((ENTRY)[0-9]|(ETP\([0-9A-Z]{1,4}\))|(EXIT)[0-9])$/;
 
     const IS_AIRWAY = /^[A-Z]{1,2}\d{1,3}$/;
-    const IS_LIDO_DOTS = /^[\.]{1,4}$/;
+    const IS_LIDO_DOTS = /^[.]{1,4}$/;
     const IS_RFOB = /^(\d{1,3}\.\d)$/; // Broadened to handle > 100t or small < 1t values
     const IS_CTM = /^\d{4}$/;
     const IS_FIR_DASHES = /^-{3,}$/;
@@ -213,7 +213,7 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
     const IS_DATE = /^[0-9]{1,2}[A-Z]{3}$/i;
     const IS_MACH_COMP = /^[PM][0-9]{4}$/i;
     const IS_AC_TYPE = /^(A\d{3}[A-Z]?|B\d{3}[A-Z]?)$/i;
-    const IS_AC_REG = /^[A-Z0-9]{1,2}\-[A-Z0-9]{3,5}$|^A7[A-Z]{3}$/i;
+    const IS_AC_REG = /^[A-Z0-9]{1,2}-[A-Z0-9]{3,5}$|^A7[A-Z]{3}$/i;
     const IS_ALT_UNIT = /^[0-9]+(FT|KT|M|Z|MSL)$/i;
 
     const FIR_DESIGNATORS = new Set(Object.values(FIR_DATA).map(v => v.toUpperCase()));
@@ -269,6 +269,7 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
 
         // 1. FIR Logic (Separator Rows)
         const matchedByName = Object.keys(FIR_DATA).find(f => tokUp === f || (tokUp + ' ' + (tokens[i + 1] || '').toUpperCase()) === f);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const matchedByDesignator = Object.entries(FIR_DATA).find(([_, des]) => tokUp === des)?.[0];
         const knownFir = matchedByName || matchedByDesignator;
 
@@ -305,7 +306,7 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
         // 2. Structural Waypoint Parsing
         if (IS_STRUCTURAL_WPT(tok)) {
             if (isLidoMarkerRow(i)) {
-                let name = tokUp;
+                const name = tokUp;
                 const isToc = name === 'TOC';
                 const isTod = name === 'TOD';
                 let ctmRaw = '';

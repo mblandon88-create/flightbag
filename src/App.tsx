@@ -1,43 +1,47 @@
 import { useState } from 'react'
-import { Sidebar } from './components/Sidebar'
+import { MainLayout } from './components/MainLayout'
 import { FlightInit } from './components/FlightInit'
 import { Performance } from './components/Performance'
 import { TechLog } from './components/TechLog'
 import { DangerousGoods } from './components/DangerousGoods'
 import { InflightDisplay } from './components/InflightDisplay'
 import { PAGuide } from './components/PAGuide'
-import './App.css'
+import type { AppSection } from './types';
+import { useStore } from './store/useStore'
+import './index.css'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('init')
+  const [activeSection, setActiveSection] = useState<AppSection>('flight-init')
+  const { flightData } = useStore();
 
-  // Simple renderer for content based on active tab
+  const routeLabel = flightData
+    ? `${flightData.departure} ➔ ${flightData.arrival}`
+    : 'EFB DASHBOARD';
+
   const renderContent = () => {
-    switch (activeTab) {
-      case 'init': return <FlightInit />;
+    switch (activeSection) {
+      case 'flight-init': return <FlightInit />;
       case 'performance': return <Performance />;
       case 'techlog': return <TechLog />;
-      case 'dg': return <DangerousGoods />;
+      case 'dangerous-goods': return <DangerousGoods />;
       case 'inflight': return <InflightDisplay />;
-      case 'pa': return <PAGuide />;
+      case 'pa-guide': return <PAGuide />;
       default: return (
-        <div>
-          <h2>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Module</h2>
-          <div className="card" style={{ marginTop: '1rem' }}>
-            <p style={{ color: 'var(--text-secondary)' }}>This module is currently under construction.</p>
-          </div>
+        <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
+          <p className="text-sm font-medium">Section "{activeSection}" is currently under maintenance.</p>
         </div>
       );
     }
   }
 
   return (
-    <div className="app-container">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      <main className="main-content">
-        {renderContent()}
-      </main>
-    </div>
+    <MainLayout
+      activeSection={activeSection}
+      onSectionChange={setActiveSection}
+      route={routeLabel}
+    >
+      {renderContent()}
+    </MainLayout>
   )
 }
 

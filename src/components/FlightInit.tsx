@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { parseLidoPDF } from '../utils/pdfParser';
-import { FileUp, Loader2, CheckCircle } from 'lucide-react';
+import { Upload, Loader2, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { cn } from '../lib/utils';
 
 export const FlightInit: React.FC = () => {
     const { flightData, setFlightData } = useStore();
@@ -26,74 +27,92 @@ export const FlightInit: React.FC = () => {
     };
 
     return (
-        <div className="flight-init">
-            <h2>Flight Initialization</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                Load your LIDO Flight Plan to automatically initialize the EFB.
-            </p>
+        <div className="flex-1 flex flex-col gap-4 md:gap-6 min-h-0">
+            <section className="shrink-0">
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-1">Flight Initialization</h3>
+                <p className="text-slate-400 text-xs md:text-sm">Load your LIDO Flight Plan to automatically initialize the EFB.</p>
+            </section>
 
-            <div className="card" style={{ maxWidth: '600px', marginBottom: '2rem', padding: '1rem' }}>
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 min-h-0">
                 <div
-                    style={{
-                        border: '2px dashed var(--border-color)',
-                        borderRadius: '8px',
-                        padding: '1rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '1rem',
-                        cursor: 'pointer',
-                        transition: 'border-color var(--transition-fast)'
-                    }}
+                    className="md:col-span-1 glass-panel p-6 flex flex-col items-center justify-center border-dashed border-2 border-white/10 hover:border-aviation-accent/50 transition-colors cursor-pointer group shrink-0 md:shrink"
                     onClick={() => document.getElementById('pdf-upload')?.click()}
                 >
-                    {loading ? (
-                        <Loader2 size={28} color="var(--accent-blue)" className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
-                    ) : (
-                        <FileUp size={28} color="var(--accent-blue)" />
-                    )}
-
-                    <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.1rem' }}>
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-aviation-accent/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        {loading ? (
+                            <Loader2 className="w-5 h-5 md:w-6 md:h-6 text-aviation-accent animate-spin" />
+                        ) : (
+                            <Upload className="w-5 h-5 md:w-6 md:h-6 text-aviation-accent" />
+                        )}
+                    </div>
+                    <span className="text-xs md:text-sm font-semibold text-white">
                         {loading ? 'Parsing...' : 'Upload LIDO PDF'}
-                    </h3>
-
+                    </span>
+                    <span className="text-[9px] md:text-[10px] text-slate-500 mt-1">Drag and drop or click</span>
                     <input
                         type="file"
                         id="pdf-upload"
                         accept="application/pdf"
-                        style={{ display: 'none' }}
+                        className="hidden"
                         onChange={handleFileUpload}
                     />
+                    {error && <p className="text-aviation-warning text-[10px] mt-2 text-center">{error}</p>}
                 </div>
-                {error && <p style={{ color: 'var(--accent-red)', marginTop: '1rem' }}>{error}</p>}
-            </div>
 
-            {flightData && (
-                <div className="card" style={{ borderLeft: '4px solid var(--accent-blue)', animation: 'fade-in 0.3s ease' }}>
-                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-green)' }}>
-                        <CheckCircle size={20} /> Data Loaded Successfully
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                        <div><strong>Flight Number:</strong> <span style={{ color: 'var(--accent-blue)' }}>{flightData.flightNumber}</span></div>
-                        <div><strong>Route:</strong> {flightData.departure} ➔ {flightData.arrival}</div>
-                        <div><strong>STD:</strong> <span style={{ color: 'var(--accent-orange)' }}>{flightData.std}</span></div>
-                        <div><strong>STA:</strong> <span style={{ color: 'var(--accent-orange)' }}>{flightData.sta}</span></div>
-                        <div style={{ gridColumn: 'span 2' }}><strong>Block Time (BLK):</strong> {flightData.blkTime}</div>
-                        <div><strong>Trip Fuel:</strong> {flightData.tripFuel} kg</div>
-                        <div><strong>Ramp Fuel:</strong> {flightData.rampFuel} kg</div>
-                        <div><strong>MZFW:</strong> {flightData.mzfw} kg</div>
-                        <div><strong>MTOW:</strong> {flightData.mtow} kg</div>
-                    </div>
-                    <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <div>
-                            <strong>Route:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{flightData.route}</span>
+                {flightData && (
+                    <div className="md:col-span-2 glass-panel p-4 md:p-6 border-l-4 border-l-aviation-success flex flex-col min-h-0 animate-in fade-in slide-in-from-left-4 duration-300">
+                        <div className="flex items-center gap-2 text-aviation-success mb-4 shrink-0">
+                            <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />
+                            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">Data Loaded Successfully</span>
                         </div>
-                        <div>
-                            <strong>Flight Level(s):</strong> <span style={{ fontFamily: 'monospace', color: 'var(--accent-orange)' }}>{flightData.flightLevel}</span>
+
+                        <div className="flex-1 grid grid-cols-2 gap-y-4 gap-x-8 md:gap-x-12 overflow-y-auto pr-2 custom-scrollbar">
+                            <DataField label="Flight Number" value={flightData.flightNumber} highlight />
+                            <DataField label="Route" value={`${flightData.departure} ➔ ${flightData.arrival}`} />
+                            <DataField
+                                label="STD"
+                                value={flightData.std.includes('/') ? `${flightData.std.split('/')[1].substring(0, 2)}:${flightData.std.split('/')[1].substring(2, 4)}` : flightData.std}
+                                warning
+                            />
+                            <DataField
+                                label="STA"
+                                value={flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
+                                warning
+                            />
+                            <div className="col-span-2">
+                                <DataField label="Block Time (BLK)" value={flightData.blkTime} />
+                            </div>
+                            <DataField label="Trip Fuel" value={`${flightData.tripFuel} kg`} />
+                            <DataField label="Ramp Fuel" value={`${flightData.rampFuel} kg`} />
+                            <DataField label="MZFW" value={`${flightData.mzfw} kg`} />
+                            <DataField label="MTOW" value={`${flightData.mtow} kg`} />
+
+                            <div className="col-span-2 pt-4 border-t border-white/5">
+                                <DataField label="Full Route String" value={flightData.route} mono />
+                            </div>
+                            <div className="col-span-2">
+                                <DataField label="Flight Level(s)" value={flightData.flightLevel} warning />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };
+
+function DataField({ label, value, highlight, warning, mono }: { label: string, value: string, highlight?: boolean, warning?: boolean, mono?: boolean }) {
+    return (
+        <div className="space-y-1">
+            <span className="data-label text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{label}</span>
+            <p className={cn(
+                "text-sm font-medium",
+                mono ? "font-mono" : "font-sans",
+                highlight ? "text-aviation-accent font-bold" : "text-slate-200",
+                warning ? "text-aviation-warning font-bold" : ""
+            )}>
+                {value}
+            </p>
+        </div>
+    );
+}
