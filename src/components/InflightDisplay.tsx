@@ -5,10 +5,6 @@ import {
     CheckCircle2,
     Navigation,
     Plane,
-    ZoomIn,
-    ZoomOut,
-    RotateCcw,
-    RotateCw
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
@@ -235,13 +231,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                     ))}
                 </div>
 
-                <div className="hidden md:flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/5">
-                    {[ZoomOut, ZoomIn, RotateCcw, RotateCw].map((Icon, idx) => (
-                        <button key={idx} className="p-2 text-slate-500 hover:text-white transition-colors">
-                            <Icon className="w-4 h-4" />
-                        </button>
-                    ))}
-                </div>
+
             </div>
 
             <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0">

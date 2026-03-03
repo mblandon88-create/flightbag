@@ -1,6 +1,0 @@
-src/components/InflightDisplay.tsx(3,5): error TS6133: 'Clock' is declared but its value is never read.
-src/components/InflightDisplay.tsx(36,11): error TS6133: 'scrollContainerRef' is declared but its value is never read.
-src/components/PAGuide.tsx(58,29): error TS2304: Cannot find name 'cn'.
-src/components/PAGuide.tsx(59,34): error TS2304: Cannot find name 'cn'.
-src/components/PAGuide.tsx(60,32): error TS2304: Cannot find name 'cn'.
-src/components/PAGuide.tsx(63,33): error TS2304: Cannot find name 'cn'.

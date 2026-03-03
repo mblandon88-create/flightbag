@@ -1,5 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
-import { FIR_DATA } from './firData';
+import { FIR_DATA } from '../data/firData';
 
 // We need to set the workerSrc for pdf.js to work.
 // Since we are using Vite, we can point it to the local worker file copied to public
@@ -19,6 +19,7 @@ export interface WaypointEntry {
 
 export interface ParsedFlightData {
     flightNumber: string;
+    aircraftType: string;
     departure: string;
     arrival: string;
     destTimezoneOffset: string; // e.g. "M0500", "P0300", "Z0000"
@@ -36,7 +37,7 @@ export interface ParsedFlightData {
     mtow: string;
     mzfw: string;
     ezfw: string;
-    // Basic Routing
+    mlw: string;
     route: string;
     flightLevel: string;
     // Block Times
@@ -44,6 +45,13 @@ export interface ParsedFlightData {
     sta: string;
     blkTime: string;
     tripTime: number; // minutes
+    taxiTime: number; // minutes
+    contTime: number; // minutes
+    altTime: number;  // minutes
+    finlTime: number; // minutes
+    extraTime: number; // minutes
+    minReqTime: number; // minutes
+    rampTime: number; // minutes
     // Structured Nav Log
     waypointEntries: WaypointEntry[];
     // Legacy flat list (for backward compat)
@@ -78,113 +86,7 @@ export const parseLidoPDF = async (file: File): Promise<ParsedFlightData> => {
                     fullText += pageText + ' ';
                 }
 
-                // IMPROVED ICAO EXTRACTION: Look for [A-Z]{4}/[A-Z]{4} patterns flexibly
-                // Specifically look for the DOH-ISB or OTHH/OPIS patterns
-                const icaoPairMatch = fullText.match(/([A-Z]{4})\s*\/\s*([A-Z]{4})/)
-                    || fullText.match(/([A-Z]{3,4})-([A-Z]{3,4})\s+Reg/);
-
-                let departure = 'Unknown';
-                let arrival = 'Unknown';
-
-                if (icaoPairMatch) {
-                    departure = icaoPairMatch[1].length === 3 ? `O${icaoPairMatch[1]}` : icaoPairMatch[1];
-                    arrival = icaoPairMatch[2].length === 3 ? `O${icaoPairMatch[2]}` : icaoPairMatch[2];
-                } else {
-                    departure = extractRegex(fullText, /([A-Z]{4})\/[A-Z]{4}\s+A\d{2}[A-Z]{1}/i) || 'Unknown';
-                    arrival = extractRegex(fullText, /[A-Z]{4}\/([A-Z]{4})\s+A\d{2}[A-Z]{1}/i) || 'Unknown';
-                }
-
-
-                // The main route extraction
-                const fullRouteString = extractRoute(fullText) || 'Not Found';
-                let route = fullRouteString;
-                let flightLevel = 'Not Found';
-
-                const flMatch = fullRouteString.match(/(FL\d+.*)/);
-                if (flMatch) {
-                    flightLevel = flMatch[1].trim();
-                    route = fullRouteString.replace(flMatch[1], '').trim();
-                }
-
-                const tripDataMatch = fullText.match(/TRIP\s+(\d+)\s+(\d{4})/i);
-                const tripFuelStr = tripDataMatch ? round100(tripDataMatch[1]) : round100(extractRegex(fullText, /TRIP\s+(\d+)/i));
-                const tripTimeRaw = tripDataMatch ? tripDataMatch[2] : '0000';
-                const tripTimeMinutes = parseInt(tripTimeRaw.substring(0, 2), 10) * 60 + parseInt(tripTimeRaw.substring(2, 4), 10);
-
-                const taxiFuelStr = round100(extractRegex(fullText, /TAXI\s+(\d+)/i));
-
-                const contMatch = fullText.match(/CONT\s+(.*?)\s+(\d{3,6})/i);
-                const contingencyRemarks = contMatch ? contMatch[1].trim() : '';
-                const contingencyFuelStr = round100(contMatch ? contMatch[2] : (extractRegex(fullText, /CONT.*?\s+(\d{3,6})/i)));
-
-                const altFuelStr = round100(extractRegex(fullText, /ALTN?\s+(?:[A-Z]+\s+)?(\d+)/i));
-                const finResFuelStr = round100(extractRegex(fullText, /FIN(?:L|AL|RES)?\s+(\d+)/i));
-                const minReqFuelStr = round100(extractRegex(fullText, /MIN.*?(?:T\/O|REQ|FUEL)\s+(\d+)/i));
-                const extraFuelStr = round100(extractRegex(fullText, /EXTRA\s+(?:[A-Z]\s+)?(\d+)/i));
-                const picFuelStr = round100(extractRegex(fullText, /PIC(?:D|.*?EXT(?:RA)?)?\s+(\d+)/i));
-
-                const calculatedRampFuel = (
-                    parseInt(taxiFuelStr) +
-                    parseInt(tripFuelStr) +
-                    parseInt(contingencyFuelStr) +
-                    parseInt(altFuelStr) +
-                    parseInt(finResFuelStr) +
-                    parseInt(extraFuelStr) +
-                    parseInt(picFuelStr)
-                ).toString();
-
-                const weightMatch = fullText.match(/MZFW\s+(\d+)\s+EZFW\s+(\d+)/i);
-                const mzfwStr = weightMatch ? weightMatch[1] : (extractRegex(fullText, /MZFW\s+(\d+)/i) || '0');
-                const ezfwStr = weightMatch ? weightMatch[2] : (extractRegex(fullText, /EZFW\s+(\d+)/i) || '0');
-                const mtowStr = extractRegex(fullText, /MTOW\s+(\d+)/i) || '0';
-
-                // Extract structured nav log entries, stopping at arrival ICAO
-                const waypointEntries = extractNavLog(fullText, arrival);
-
-
-                const waypoints = waypointEntries
-                    .filter(e => !e.isFir)
-                    .map(e => e.name);
-
-                // Extract destination timezone
-                // Look for patterns like P0300 OTHH/KIAD M0500 or just M0500 next to arrival ICAO
-                const destTzMatch = fullText.match(/([PMZ]\d{4})\s+[A-Z]{3,4}\s*\/\s*[A-Z]{3,4}\s+([PMZ]\d{4})/)
-                    || fullText.match(new RegExp(`${arrival}\\s+([PMZ]\\d{4})`));
-
-                let destTimezoneOffset = 'Z0000';
-                if (destTzMatch) {
-                    destTimezoneOffset = destTzMatch[2] || destTzMatch[1];
-                }
-
-                const data: ParsedFlightData = {
-                    flightNumber: extractRegex(fullText, /(QTR\d+[A-Z]?)\/QR\d+/i) || extractRegex(fullText, /COPY\s+(QR\d+)/i) || 'Unknown',
-                    departure,
-                    arrival,
-                    destTimezoneOffset,
-                    tripFuel: tripFuelStr,
-                    rampFuel: calculatedRampFuel,
-                    taxiFuel: taxiFuelStr,
-                    contingencyFuel: contingencyFuelStr,
-                    contingencyRemarks: contingencyRemarks,
-                    altFuel: altFuelStr,
-                    finResFuel: finResFuelStr,
-                    minReqFuel: minReqFuelStr,
-                    extraFuel: extraFuelStr,
-                    picFuel: picFuelStr,
-                    mzfw: round100(mzfwStr),
-                    ezfw: round100(ezfwStr),
-                    mtow: round100(mtowStr),
-                    route: route || 'Not Found',
-                    flightLevel: flightLevel,
-                    std: extractRegex(fullText, /STD\s+([\d/]+)/i) || 'Unknown',
-                    sta: extractRegex(fullText, /STA\s+([\d/]+)/i) || 'Unknown',
-                    blkTime: extractRegex(fullText, /BLK\s+(\d{4})/i) || 'Unknown',
-                    tripTime: tripTimeMinutes,
-                    waypointEntries,
-                    waypoints,
-                };
-
-                resolve(data);
+                resolve(parseLidoText(fullText));
             } catch (err) {
                 reject(err);
             }
@@ -193,6 +95,148 @@ export const parseLidoPDF = async (file: File): Promise<ParsedFlightData> => {
         reader.onerror = (err) => reject(err);
         reader.readAsArrayBuffer(file);
     });
+};
+
+export const parseLidoText = (fullText: string): ParsedFlightData => {
+    // IMPROVED ICAO EXTRACTION: Look for [A-Z]{4}/[A-Z]{4} patterns flexibly
+    // Specifically look for the DOH-ISB or OTHH/OPIS patterns
+    const icaoPairMatch = fullText.match(/([A-Z]{4})\s*\/\s*([A-Z]{4})/)
+        || fullText.match(/([A-Z]{3,4})-([A-Z]{3,4})\s+Reg/);
+
+    let departure = 'Unknown';
+    let arrival = 'Unknown';
+
+    if (icaoPairMatch) {
+        departure = icaoPairMatch[1].length === 3 ? `O${icaoPairMatch[1]}` : icaoPairMatch[1];
+        arrival = icaoPairMatch[2].length === 3 ? `O${icaoPairMatch[1]}` : icaoPairMatch[2];
+    } else {
+        departure = extractRegex(fullText, /([A-Z]{4})\/[A-Z]{4}\s+A\d{2}[A-Z]{1}/i) || 'Unknown';
+        arrival = extractRegex(fullText, /[A-Z]{4}\/([A-Z]{4})\s+A\d{2}[A-Z]{1}/i) || 'Unknown';
+    }
+
+
+    // The main route extraction
+    const fullRouteString = extractRoute(fullText) || 'Not Found';
+    let route = fullRouteString;
+    let flightLevel = 'Not Found';
+
+    const flMatch = fullRouteString.match(/(FL\d+.*)/);
+    if (flMatch) {
+        flightLevel = flMatch[1].trim();
+        route = fullRouteString.replace(flMatch[1], '').trim();
+    }
+
+    const tripDataMatch = fullText.match(/TRIP\s+(\d+)\s+(\d{4})/i);
+    const tripFuelStr = tripDataMatch ? round100(tripDataMatch[1]) : round100(extractRegex(fullText, /TRIP\s+(\d+)/i));
+    const tripTimeRaw = tripDataMatch ? tripDataMatch[2] : '0000';
+    const tripTimeMinutes = parseInt(tripTimeRaw.substring(0, 2), 10) * 60 + parseInt(tripTimeRaw.substring(2, 4), 10);
+
+    const taxiMatch = fullText.match(/TAXI\s+(\d+)(?:\s+(\d{4}))?/i);
+    const taxiFuelStr = round100(taxiMatch ? taxiMatch[1] : extractRegex(fullText, /TAXI\s+(\d+)/i));
+    const taxiTimeRaw = taxiMatch?.[2] || '0000';
+    const taxiTimeMinutes = parseInt(taxiTimeRaw.substring(0, 2), 10) * 60 + parseInt(taxiTimeRaw.substring(2, 4), 10);
+
+    const contMatch = fullText.match(/CONT\s+(.*?)\s+(\d+)(?:\s+(\d{4}))?/i);
+    const contingencyRemarks = contMatch ? contMatch[1].trim() : '';
+    const contingencyFuelStr = round100(contMatch ? contMatch[2] : (extractRegex(fullText, /CONT.*?\s+(\d+)/i)));
+    const contTimeRaw = contMatch?.[3] || '0000';
+    const contTimeMinutes = parseInt(contTimeRaw.substring(0, 2), 10) * 60 + parseInt(contTimeRaw.substring(2, 4), 10);
+
+    const altMatch = fullText.match(/ALTN?\s+(?:[A-Z]+\s+)?(\d+)(?:\s+(\d{4}))?/i);
+    const altFuelStr = round100(altMatch ? altMatch[1] : extractRegex(fullText, /ALTN?\s+(?:[A-Z]+\s+)?(\d+)/i));
+    const altTimeRaw = altMatch?.[2] || '0000';
+    const altTimeMinutes = parseInt(altTimeRaw.substring(0, 2), 10) * 60 + parseInt(altTimeRaw.substring(2, 4), 10);
+
+    const finlMatch = fullText.match(/FIN(?:L|AL|RES)?\s+(\d+)(?:\s+(\d{4}))?/i);
+    const finResFuelStr = round100(finlMatch ? finlMatch[1] : extractRegex(fullText, /FIN(?:L|AL|RES)?\s+(\d+)/i));
+    const finlTimeRaw = finlMatch?.[2] || '0000';
+    const finlTimeMinutes = parseInt(finlTimeRaw.substring(0, 2), 10) * 60 + parseInt(finlTimeRaw.substring(2, 4), 10);
+
+    const extraMatch = fullText.match(/EXTRA\s+(?:[A-Z]\s+)?(\d+)(?:\s+(\d{4}))?/i);
+    const extraFuelStr = round100(extraMatch ? extraMatch[1] : extractRegex(fullText, /EXTRA\s+(?:[A-Z]\s+)?(\d+)/i));
+    const extraTimeRaw = extraMatch?.[2] || '0000';
+    const extraTimeMinutes = parseInt(extraTimeRaw.substring(0, 2), 10) * 60 + parseInt(extraTimeRaw.substring(2, 4), 10);
+
+    const minReqMatch = fullText.match(/MIN.*?(?:T\/O|REQ|FUEL)\s+(\d+)(?:\s+(\d{4}))?/i);
+    const minReqFuelStr = round100(minReqMatch ? minReqMatch[1] : extractRegex(fullText, /MIN.*?(?:T\/O|REQ|FUEL)\s+(\d+)/i));
+    const minReqTimeRaw = minReqMatch?.[2] || '0000';
+    const minReqTimeMinutes = parseInt(minReqTimeRaw.substring(0, 2), 10) * 60 + parseInt(minReqTimeRaw.substring(2, 4), 10);
+
+    const picFuelStr = round100(extractRegex(fullText, /PIC(?:D|.*?EXT(?:RA)?)?\s+(\d+)/i));
+
+    const calculatedRampFuel = (
+        parseInt(taxiFuelStr) +
+        parseInt(tripFuelStr) +
+        parseInt(contingencyFuelStr) +
+        parseInt(altFuelStr) +
+        parseInt(finResFuelStr) +
+        parseInt(extraFuelStr) +
+        parseInt(picFuelStr)
+    ).toString();
+
+    const weightMatch = fullText.match(/MZFW\s+(\d+)\s+EZFW\s+(\d+)/i);
+    const mzfwStr = weightMatch ? weightMatch[1] : (extractRegex(fullText, /MZFW\s+(\d+)/i) || '0');
+    const ezfwStr = weightMatch ? weightMatch[2] : (extractRegex(fullText, /EZFW\s+(\d+)/i) || '0');
+    const mtowStr = extractRegex(fullText, /MTOW\s+(\d+)/i) || '0';
+    const mlwStr = extractRegex(fullText, /MLWT?\s+(\d+)/i) || extractRegex(fullText, /LAW\s+(\d+)/i) || '0';
+
+    // Extract structured nav log entries, stopping at arrival ICAO
+    const waypointEntries = extractNavLog(fullText, arrival);
+
+
+    const waypoints = waypointEntries
+        .filter(e => !e.isFir)
+        .map(e => e.name);
+
+    // Extract destination timezone
+    // Look for patterns like P0300 OTHH/KIAD M0500 or just M0500 next to arrival ICAO
+    const destTzMatch = fullText.match(/([PMZ]\d{4})\s+[A-Z]{4}\s*\/\s*[A-Z]{4}\s+([PMZ]\d{4})/)
+        || fullText.match(new RegExp(`${arrival}\\s+([PMZ]\\d{4})`))
+        || fullText.match(/OTHH\/[A-Z]{4}\s+([PMZ]\d{4})/);
+
+    let destTimezoneOffset = 'Z0000';
+    if (destTzMatch) {
+        destTimezoneOffset = destTzMatch[2] || destTzMatch[1];
+    }
+
+    return {
+        flightNumber: extractRegex(fullText, /(QTR\d+[A-Z]?)\/QR\d+/i) || extractRegex(fullText, /COPY\s+(QR\d+)/i) || 'Unknown',
+        aircraftType: extractRegex(fullText, /(?:OTHH|DOH)\s*\/\s*[A-Z]{4}\s+(?![PMZ]\d{4})\s*([A-Z\d]{4})/)
+            || extractRegex(fullText, /(?:TYPE|A\/C TYPE)\s*[:]?\s*(A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)/i)
+            || extractRegex(fullText, /A\/C\s.*?(A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)/i) || 'Unknown',
+        departure,
+        arrival,
+        destTimezoneOffset,
+        tripFuel: tripFuelStr,
+        rampFuel: calculatedRampFuel,
+        taxiFuel: taxiFuelStr,
+        contingencyFuel: contingencyFuelStr,
+        contingencyRemarks: contingencyRemarks,
+        altFuel: altFuelStr,
+        finResFuel: finResFuelStr,
+        minReqFuel: minReqFuelStr,
+        extraFuel: extraFuelStr,
+        picFuel: picFuelStr,
+        mzfw: round100(mzfwStr),
+        ezfw: round100(ezfwStr),
+        mtow: round100(mtowStr),
+        mlw: round100(mlwStr),
+        route: route || 'Not Found',
+        flightLevel: flightLevel,
+        std: extractRegex(fullText, /STD\s+([\d/]+)/i) || 'Unknown',
+        sta: extractRegex(fullText, /STA\s+([\d/]+)/i) || 'Unknown',
+        blkTime: extractRegex(fullText, /BLK\s+(\d{4})/i) || 'Unknown',
+        tripTime: tripTimeMinutes,
+        taxiTime: taxiTimeMinutes,
+        contTime: contTimeMinutes,
+        altTime: altTimeMinutes,
+        finlTime: finlTimeMinutes,
+        extraTime: extraTimeMinutes,
+        minReqTime: minReqTimeMinutes,
+        rampTime: taxiTimeMinutes + tripTimeMinutes + contTimeMinutes + altTimeMinutes + finlTimeMinutes + extraTimeMinutes,
+        waypointEntries,
+        waypoints,
+    };
 };
 
 const extractRegex = (text: string, regex: RegExp): string | null => {

@@ -5,11 +5,8 @@ import type { ParsedFlightData } from '../utils/pdfParser';
 
 export interface DGItem {
     id: string;
-    unNumber: string;
-    psn: string; // Proper Shipping Name
-    classOrDiv: string;
-    quantity: string;
-    location: string;
+    drillNo: string;
+    drillLetter: string;
 }
 
 export interface TechLogData {
@@ -90,7 +87,7 @@ export const useStore = create<EFBState>()(
             updateFlightData: (newData) => set((state) => ({
                 flightData: state.flightData ? { ...state.flightData, ...newData } : null
             })),
-            clearFlightData: () => set({ flightData: null, meteredUplift: 0, inflightData: initialInflightData, techLogData: initialTechLogData }),
+            clearFlightData: () => set({ flightData: null, meteredUplift: 0, inflightData: initialInflightData, techLogData: initialTechLogData, dgItems: [] }),
 
             meteredUplift: 0,
             setMeteredUplift: (meteredUplift) => set({ meteredUplift }),

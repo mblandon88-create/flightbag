@@ -1,10 +1,33 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Fuel, ArrowRightLeft, AlertTriangle, Calculator, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import fuelDiscrepancyData from '../data/fueldiscrepancy.json';
+
+// Helper to determine the applicable limit
+function getDiscrepancyLimit(aircraftType: string, fobKg: number): number {
+    const defaultLimit = 500;
+    if (!aircraftType || aircraftType === 'Unknown') return defaultLimit;
+
+    // Map aircraft (e.g., A332 -> A330)
+    const baseType = (fuelDiscrepancyData.aircraft_mappings as Record<string, string>)[aircraftType] || aircraftType;
+    const limitsList = (fuelDiscrepancyData.fleet_data as Record<string, Array<{ fob_max_t: number | string, diff_kg: number }>>)[baseType];
+
+    if (!limitsList) return defaultLimit;
+
+    // The FCOM values in JSON are in kilograms (e.g. 15000, 35000) despite the key name 'fob_max_t'
+    for (const rule of limitsList) {
+        if (rule.fob_max_t === 'unlimited' || fobKg <= (rule.fob_max_t as number)) {
+            return rule.diff_kg;
+        }
+    }
+
+    return defaultLimit; // Fallback
+}
 
 export const TechLog: React.FC = () => {
     const { flightData, techLogData, setTechLogData } = useStore();
+    const [applicableLimit, setApplicableLimit] = useState<number>(500);
 
     // Inputs mapped to global store
     const {
@@ -34,6 +57,18 @@ export const TechLog: React.FC = () => {
             if (!depFuel) setDepFuel(ramp);
         }
     }, [flightData]);
+
+    // Recalculate limit dynamically when arrFuel/depFuel/flightData changes, 
+    // but the FCOM table in the JSON implies the limit is based on "FOB after refueling" -> depFuel
+    useEffect(() => {
+        if (flightData?.aircraftType && depFuel) {
+            const fob = parseFloat(depFuel);
+            if (!isNaN(fob)) {
+                setApplicableLimit(getDiscrepancyLimit(flightData.aircraftType, fob));
+            }
+        }
+    }, [flightData?.aircraftType, depFuel]);
+
 
     if (!flightData) {
         return (
@@ -85,6 +120,10 @@ export const TechLog: React.FC = () => {
         // (I) FUEL USED ON GROUND (KG) = (F) - (B)
         const I = F - B;
         setFuelUsedOnGround(I);
+
+        // Update limit just before calculating discrepancy
+        setApplicableLimit(getDiscrepancyLimit(flightData.aircraftType, H));
+
 
         // (J) DISCREPANCY (KG) = [(G) - [(H) - (F)]] - (I)
         const J = Math.round((G - (H - F)) - I);
@@ -184,14 +223,14 @@ export const TechLog: React.FC = () => {
                         <div className="flex justify-center w-full shrink-0">
                             <div className={cn(
                                 "flex flex-col items-center justify-center p-2 w-full max-w-[260px] rounded-lg border-2 transition-all animate-in fade-in zoom-in duration-300",
-                                Math.abs(discrepancy) > 500
+                                Math.abs(discrepancy) > applicableLimit
                                     ? "bg-aviation-warning/10 border-aviation-warning/40 shadow-[0_0_15px_rgba(239,68,68,0.15)]"
                                     : "bg-aviation-success/10 border-aviation-success/40 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
                             )}>
                                 <div className="flex flex-col items-center justify-center w-full">
                                     <div className="flex items-center justify-between w-full">
                                         <div className="flex items-center gap-1.5">
-                                            <ArrowRightLeft className={cn("w-3 h-3", Math.abs(discrepancy) > 500 ? "text-aviation-warning" : "text-aviation-success")} />
+                                            <ArrowRightLeft className={cn("w-3 h-3", Math.abs(discrepancy) > applicableLimit ? "text-aviation-warning" : "text-aviation-success")} />
                                             <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-300">(J) DISCREPANCY</span>
                                         </div>
                                         <span className="text-[6px] text-slate-500 font-mono tracking-widest opacity-60">
@@ -200,17 +239,22 @@ export const TechLog: React.FC = () => {
                                     </div>
                                     <span className={cn(
                                         "text-lg md:text-xl font-mono font-black tracking-tighter leading-none mt-1",
-                                        Math.abs(discrepancy) > 500 ? "text-aviation-warning" : "text-aviation-success"
+                                        Math.abs(discrepancy) > applicableLimit ? "text-aviation-warning" : "text-aviation-success"
                                     )}>
                                         {discrepancy > 0 ? '+' : ''}{discrepancy} kg
                                     </span>
                                 </div>
-                                {Math.abs(discrepancy) > 500 && (
-                                    <div className="flex items-center gap-1.5 mt-1.5 text-aviation-warning bg-aviation-warning/20 px-2 py-0.5 rounded-sm border border-aviation-warning/30">
-                                        <AlertTriangle className="w-2.5 h-2.5" />
-                                        <span className="text-[6px] md:text-[7px] font-bold uppercase tracking-widest">Outside Limits (±500kg)</span>
-                                    </div>
-                                )}
+                                <div className={cn(
+                                    "flex items-center gap-1.5 mt-1.5 px-2 py-0.5 rounded-sm border",
+                                    Math.abs(discrepancy) > applicableLimit
+                                        ? "text-aviation-warning bg-aviation-warning/20 border-aviation-warning/30"
+                                        : "text-slate-400 bg-white/5 border-white/10"
+                                )}>
+                                    {Math.abs(discrepancy) > applicableLimit && <AlertTriangle className="w-2.5 h-2.5" />}
+                                    <span className="text-[6px] md:text-[7px] font-bold uppercase tracking-widest">
+                                        {Math.abs(discrepancy) > applicableLimit ? "Outside Limits" : "Within Limits"} (±{applicableLimit}kg)
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     )}

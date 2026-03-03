@@ -1,0 +1,121 @@
+{
+    "document": "Emergency Response Guidance for Aircraft Incidents Involving Dangerous Goods",
+    "table_reference": "Table 4-1. Aircraft Emergency Response Drills",
+    "drills": [
+        {
+            "drill_no": "1",
+            "inherent_risk": "Explosion may cause structural failure",
+            "risk_to_aircraft": "Fire and/or explosion",
+            "risk_to_occupants": "As indicated by the drill letter(s)",
+            "spill_or_leak_procedure": "Use 100% oxygen; no smoking",
+            "firefighting_procedure": "All agents according to availability; use standard fire procedure",
+            "additional_considerations": "Possible abrupt loss of pressurization"
+        },
+        {
+            "drill_no": "2",
+            "inherent_risk": "Gas, non-flammable, pressure may create hazard in fire",
+            "risk_to_aircraft": "Minimal",
+            "risk_to_occupants": "As indicated by the drill letter(s)",
+            "spill_or_leak_procedure": "Use 100% oxygen; establish and maintain maximum ventilation for \"A\", \"i\" or \"P\" drill letter",
+            "firefighting_procedure": "All agents according to availability; use standard fire procedure",
+            "additional_considerations": "Possible abrupt loss of pressurization"
+        },
+        {
+            "drill_no": "3",
+            "inherent_risk": "Flammable liquid or solid",
+            "risk_to_aircraft": "Fire and/or explosion",
+            "risk_to_occupants": "Smoke, fumes and heat, and as indicated by the drill letter(s)",
+            "spill_or_leak_procedure": "Use 100% oxygen; establish and maintain maximum ventilation; no smoking; minimum electrics",
+            "firefighting_procedure": "All agents according to availability; no water on \"W\" drill letter",
+            "additional_considerations": "Possible abrupt loss of pressurization"
+        },
+        {
+            "drill_no": "4",
+            "inherent_risk": "Spontaneously combustible or pyrophoric when exposed to air",
+            "risk_to_aircraft": "Fire and/or explosion",
+            "risk_to_occupants": "Smoke, fumes and heat, and as indicated by the drill letter(s)",
+            "spill_or_leak_procedure": "Use 100% oxygen; establish and maintain maximum ventilation",
+            "firefighting_procedure": "All agents according to availability; no water on \"W\" drill letter",
+            "additional_considerations": "Possible abrupt loss of pressurization; minimum electrics if \"F\" or \"H\" drill letter"
+        },
+        {
+            "drill_no": "5",
+            "inherent_risk": "Oxidizer, may ignite other materials, may explode in heat of a fire",
+            "risk_to_aircraft": "Fire and/or explosion, possible corrosion damage",
+            "risk_to_occupants": "Eye, nose and throat irritation; skin damage on contact",
+            "spill_or_leak_procedure": "Use 100% oxygen; establish and maintain maximum ventilation",
+            "firefighting_procedure": "All agents according to availability; no water on \"W\" drill letter",
+            "additional_considerations": "Possible abrupt loss of pressurization"
+        },
+        {
+            "drill_no": "6",
+            "inherent_risk": "Toxic, may be fatal if inhaled, ingested, or absorbed by skin",
+            "risk_to_aircraft": "Contamination with toxic liquid or solid",
+            "risk_to_occupants": "Acute toxicity, effects may be delayed",
+            "spill_or_leak_procedure": "Use 100% oxygen; establish and maintain maximum ventilation; do not touch without gloves",
+            "firefighting_procedure": "All agents according to availability; no water on \"W\" drill letter",
+            "additional_considerations": "Possible abrupt loss of pressurization; minimum electrics if \"F\" or \"H\" drill letter"
+        },
+        {
+            "drill_no": "7",
+            "inherent_risk": "Radiation from broken/unshielded packages",
+            "risk_to_aircraft": "Contamination with spilled radioactive material",
+            "risk_to_occupants": "Exposure to radiation, and personnel contamination",
+            "spill_or_leak_procedure": "Do not move packages; avoid contact",
+            "firefighting_procedure": "All agents according to availability",
+            "additional_considerations": "Call for a qualified person to meet the aircraft"
+        },
+        {
+            "drill_no": "8",
+            "inherent_risk": "Corrosive, fumes disabling if inhaled or in contact with skin",
+            "risk_to_aircraft": "Possible corrosion damage",
+            "risk_to_occupants": "Eye, nose and throat irritation; skin damage on contact",
+            "spill_or_leak_procedure": "Use 100% oxygen; establish and maintain maximum ventilation; do not touch without gloves",
+            "firefighting_procedure": "All agents according to availability; no water on \"W\" drill letter",
+            "additional_considerations": "Possible abrupt loss of pressurization; minimum electrics if \"F\" or \"H\" drill letter"
+        },
+        {
+            "drill_no": "9",
+            "inherent_risk": "No general inherent risk; as indicated by the drill letter",
+            "risk_to_aircraft": "As indicated by the drill letter",
+            "risk_to_occupants": "As indicated by the drill letter",
+            "spill_or_leak_procedure": "Use 100% oxygen; establish and maintain maximum ventilation if \"A\" drill letter",
+            "firefighting_procedure": "All agents according to availability; no water on \"W\" drill letter",
+            "additional_considerations": "None"
+        },
+        {
+            "drill_no": "10",
+            "inherent_risk": "Gas, flammable, high fire risk if any ignition source present",
+            "risk_to_aircraft": "Fire and/or explosion",
+            "risk_to_occupants": "Smoke, fumes and heat, and as indicated by the drill letter",
+            "spill_or_leak_procedure": "Use 100% oxygen; establish and maintain maximum ventilation; no smoking; minimum electrics",
+            "firefighting_procedure": "All agents according to availability",
+            "additional_considerations": "Possible abrupt loss of pressurization"
+        },
+        {
+            "drill_no": "11",
+            "inherent_risk": "Infectious substances may affect humans or animals",
+            "risk_to_aircraft": "Contamination with Infectious substances",
+            "risk_to_occupants": "Delayed infection to humans or animals",
+            "spill_or_leak_procedure": "Do not touch; call for a qualified person to meet the aircraft; minimum circulation and ventilation in affected area",
+            "firefighting_procedure": "All agents according to availability; no water on \"Y\" drill letter",
+            "additional_considerations": "Possible abrupt loss of pressurization; Quarantine may be required by national authority"
+        }
+    ],
+    "drill_letter_key": {
+        "A": "ANAESTHETIC",
+        "C": "CORROSIVE",
+        "E": "EXPLOSIVE",
+        "F": "FLAMMABLE",
+        "H": "HIGHLY IGNITABLE",
+        "i": "IRRITANT/TEAR PRODUCING",
+        "L": "OTHER RISK LOW OR NONE",
+        "M": "MAGNETIC",
+        "N": "NOXIOUS",
+        "P": "TOXIC (POISON)",
+        "S": "SPONTANEOUSLY COMBUSTIBLE OR PYROPHORIC",
+        "W": "IF WET GIVES OFF POISONOUS OR FLAMMABLE GAS",
+        "X": "OXIDIZER",
+        "Y": "INFECTIOUS SUBSTANCE"
+    }
+}

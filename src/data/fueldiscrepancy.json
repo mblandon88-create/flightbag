@@ -1,0 +1,104 @@
+{
+    "project": "Flightbag",
+    "data_type": "Fuel Abnormal Differences",
+    "unit_fob": "tonnes (t)",
+    "unit_diff": "kilograms (kg)",
+    "fleet_data": {
+        "A330": [
+            {
+                "fob_max_t": 15000,
+                "diff_kg": 600
+            },
+            {
+                "fob_max_t": 35000,
+                "diff_kg": 700
+            },
+            {
+                "fob_max_t": 55000,
+                "diff_kg": 800
+            },
+            {
+                "fob_max_t": 75000,
+                "diff_kg": 900
+            },
+            {
+                "fob_max_t": 90000,
+                "diff_kg": 1000
+            },
+            {
+                "fob_max_t": "unlimited",
+                "diff_kg": 1100
+            }
+        ],
+        "A359": [
+            {
+                "fob_max_t": 15000,
+                "diff_kg": 900
+            },
+            {
+                "fob_max_t": 35000,
+                "diff_kg": 1000
+            },
+            {
+                "fob_max_t": 55000,
+                "diff_kg": 1200
+            },
+            {
+                "fob_max_t": 75000,
+                "diff_kg": 1300
+            },
+            {
+                "fob_max_t": 90000,
+                "diff_kg": 1500
+            },
+            {
+                "fob_max_t": 110000,
+                "diff_kg": 1600
+            },
+            {
+                "fob_max_t": "unlimited",
+                "diff_kg": 1700
+            }
+        ],
+        "A35K": [
+            {
+                "fob_max_t": 15000,
+                "diff_kg": 1000
+            },
+            {
+                "fob_max_t": 35000,
+                "diff_kg": 1100
+            },
+            {
+                "fob_max_t": 55000,
+                "diff_kg": 1300
+            },
+            {
+                "fob_max_t": 75000,
+                "diff_kg": 1400
+            },
+            {
+                "fob_max_t": 90000,
+                "diff_kg": 1600
+            },
+            {
+                "fob_max_t": 110000,
+                "diff_kg": 1700
+            },
+            {
+                "fob_max_t": 130000,
+                "diff_kg": 1900
+            },
+            {
+                "fob_max_t": "unlimited",
+                "diff_kg": 2000
+            }
+        ]
+    },
+    "aircraft_mappings": {
+        "A332": "A330",
+        "A333": "A330",
+        "A359": "A359",
+        "A35K": "A35K"
+    }
+}

@@ -39,7 +39,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
         { id: 'flight-init', label: 'Flight Init', icon: Plane },
         { id: 'performance', label: 'Performance', icon: Activity },
         { id: 'techlog', label: 'TechLog', icon: ClipboardList },
-        { id: 'dangerous-goods', label: 'Dangerous Goods', icon: AlertTriangle },
+        { id: 'dangerous-goods', label: 'DG', icon: AlertTriangle },
         { id: 'inflight', label: 'Inflight Display', icon: Monitor },
         { id: 'briefing', label: 'Briefing', icon: BookOpen },
         { id: 'pa-guide', label: 'PA Guide', icon: Mic2 },
