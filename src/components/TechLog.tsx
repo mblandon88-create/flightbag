@@ -1,10 +1,39 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { Fuel, ArrowRightLeft, AlertTriangle } from 'lucide-react';
+import { Fuel, ArrowRightLeft, AlertTriangle, Calculator, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export const TechLog: React.FC = () => {
-    const { flightData, meteredUplift, setMeteredUplift } = useStore();
+    const { flightData, techLogData, setTechLogData } = useStore();
+
+    // Inputs mapped to global store
+    const {
+        reqFuel, qtyBeforeRefuel, meteredUpliftLts, specificGravity, arrFuel, depFuel,
+        reqUplift, meteredUpliftKg, fuelUsedOnGround, discrepancy, error
+    } = techLogData;
+
+    const setReqFuel = (val: string) => setTechLogData({ reqFuel: val });
+    const setQtyBeforeRefuel = (val: string) => setTechLogData({ qtyBeforeRefuel: val });
+    const setMeteredUpliftLts = (val: string) => setTechLogData({ meteredUpliftLts: val });
+    const setSpecificGravity = (val: string) => setTechLogData({ specificGravity: val });
+    const setArrFuel = (val: string) => setTechLogData({ arrFuel: val });
+    const setDepFuel = (val: string) => setTechLogData({ depFuel: val });
+
+    const setReqUplift = (val: number | null) => setTechLogData({ reqUplift: val });
+    const setMeteredUpliftKg = (val: number | null) => setTechLogData({ meteredUpliftKg: val });
+    const setFuelUsedOnGround = (val: number | null) => setTechLogData({ fuelUsedOnGround: val });
+    const setDiscrepancy = (val: number | null) => setTechLogData({ discrepancy: val });
+    const setError = (val: string | null) => setTechLogData({ error: val });
+
+    // Initialize default values from flight plan if available
+    useEffect(() => {
+        if (flightData && flightData.rampFuel) {
+            const ramp = parseInt(flightData.rampFuel).toString();
+            // Only set if they are currently empty so we don't overwrite user edits on every render
+            if (!reqFuel) setReqFuel(ramp);
+            if (!depFuel) setDepFuel(ramp);
+        }
+    }, [flightData]);
 
     if (!flightData) {
         return (
@@ -15,76 +44,209 @@ export const TechLog: React.FC = () => {
         );
     }
 
-    const rampFuel = parseInt(flightData.rampFuel) || 0;
-    const specificGravity = 0.8;
-    const upliftLiters = Math.round(meteredUplift / specificGravity);
-    const discrepancy = meteredUplift - rampFuel;
+    const handleCalculate = () => {
+        setError(null);
+
+        // Required Inputs Validation
+        if (!reqFuel || !qtyBeforeRefuel || !meteredUpliftLts || !specificGravity || !arrFuel || !depFuel) {
+            setError('Please fill in all required fuel inputs to calculate discrepancy.');
+            setDiscrepancy(null);
+            return;
+        }
+
+        const A = parseFloat(reqFuel);
+        const B = parseFloat(qtyBeforeRefuel);
+        const D = parseFloat(meteredUpliftLts);
+
+        // Parse Specific Gravity (e.g., .778 or 0.778)
+        let E = parseFloat(specificGravity);
+        if (specificGravity.startsWith('.')) {
+            E = parseFloat(`0${specificGravity}`);
+        }
+
+        const F = parseFloat(arrFuel);
+        const H = parseFloat(depFuel);
+
+        if (isNaN(A) || isNaN(B) || isNaN(D) || isNaN(E) || isNaN(F) || isNaN(H)) {
+            setError('Invalid number format in one or more fields.');
+            setDiscrepancy(null);
+            return;
+        }
+
+        // Calculations
+        // (C) REQUIRED UPLIFT (KG) = (A) - (B)
+        const C = A - B;
+        setReqUplift(C);
+
+        // (G) METERED UPLIFT (KG) = (D) X (E)
+        const G = Math.round(D * E);
+        setMeteredUpliftKg(G);
+
+        // (I) FUEL USED ON GROUND (KG) = (F) - (B)
+        const I = F - B;
+        setFuelUsedOnGround(I);
+
+        // (J) DISCREPANCY (KG) = [(G) - [(H) - (F)]] - (I)
+        const J = Math.round((G - (H - F)) - I);
+        setDiscrepancy(J);
+    };
 
     return (
-        <div className="flex-1 flex flex-col gap-4 md:gap-6 min-h-0">
-            <section className="shrink-0">
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-1">TechLog: Fuel Uplift</h3>
-                <p className="text-slate-400 text-xs md:text-sm">Log and verify fuel uplift discrepancy.</p>
-            </section>
+        <div className="flex-1 flex flex-col gap-3 min-h-0">
 
-            <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-                <div className="w-full max-w-xl glass-panel overflow-hidden border-t-4 border-t-aviation-accent">
-                    <div className="p-6 md:p-8 space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                            <TechStat label="Required Ramp" value={`${rampFuel} kg`} />
-                            <TechStat label="Specific Gravity" value={specificGravity.toString()} />
-                        </div>
+            <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0 border-t-4 border-t-aviation-accent">
+                <div className="flex-1 p-3 md:p-5 flex flex-col overflow-y-auto custom-scrollbar">
 
-                        <div className="bg-white/5 rounded-xl p-6 border border-white/5 space-y-4">
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Metered Uplift (KG)</label>
-                            <input
-                                type="number"
-                                value={meteredUplift || ''}
-                                onChange={(e) => setMeteredUplift(parseInt(e.target.value) || 0)}
-                                placeholder="ENTER KG"
-                                className="w-full bg-black/40 border-2 border-aviation-accent/30 focus:border-aviation-accent rounded-xl p-4 text-2xl font-mono font-bold text-aviation-accent text-center focus:outline-none transition-colors"
+                    {/* 2-Column Grid filling vertical space */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 mb-2 shrink-0">
+
+                        {/* Column 1: A to E */}
+                        <div className="space-y-3 flex flex-col items-center">
+                            <InputField
+                                label="(A) REQUIRED FUEL (KG)"
+                                value={reqFuel}
+                                onChange={setReqFuel}
                             />
-                            <div className="flex justify-between items-center px-2">
-                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Equivalent Volume</span>
-                                <span className="text-sm font-mono text-slate-300">{upliftLiters} Liters</span>
-                            </div>
+                            <InputField
+                                label="(B) QTY BEFORE REFUEL (KG)"
+                                value={qtyBeforeRefuel}
+                                onChange={setQtyBeforeRefuel}
+                            />
+                            <CalculatedField
+                                label="(C) REQUIRED UPLIFT (KG)"
+                                formula="(A) - (B)"
+                                value={reqUplift}
+                            />
+                            <InputField
+                                label="(D) METERED UPLIFT (LTS)"
+                                value={meteredUpliftLts}
+                                onChange={setMeteredUpliftLts}
+                            />
+                            <InputField
+                                label="(E) SPECIFIC GRAVITY"
+                                value={specificGravity}
+                                onChange={(val) => {
+                                    let formatted = val.replace(/[^0-9.]/g, '');
+                                    if (formatted.length > 0 && !formatted.startsWith('.') && !formatted.startsWith('0.')) {
+                                        formatted = '.' + formatted.replace(/\./g, '');
+                                    }
+                                    setSpecificGravity(formatted);
+                                }}
+                                placeholder=".___ (e.g. .778)"
+                            />
                         </div>
 
-                        <div className={cn(
-                            "flex flex-col items-center justify-center p-4 rounded-xl border",
-                            Math.abs(discrepancy) > 500
-                                ? "bg-aviation-warning/10 border-aviation-warning/30"
-                                : "bg-aviation-success/10 border-aviation-success/30"
-                        )}>
-                            <div className="flex items-center gap-2 mb-1">
-                                <ArrowRightLeft className={cn("w-4 h-4", Math.abs(discrepancy) > 500 ? "text-aviation-warning" : "text-aviation-success")} />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fuel Discrepancy</span>
-                            </div>
-                            <span className={cn(
-                                "text-2xl font-mono font-bold",
-                                Math.abs(discrepancy) > 500 ? "text-aviation-warning" : "text-aviation-success"
-                            )}>
-                                {discrepancy > 0 ? '+' : ''}{discrepancy} kg
-                            </span>
-                            {Math.abs(discrepancy) > 500 && (
-                                <div className="flex items-center gap-1 mt-2 text-aviation-warning">
-                                    <AlertTriangle className="w-3 h-3" />
-                                    <span className="text-[9px] font-bold uppercase">Outside Standard Limits (±500kg)</span>
-                                </div>
-                            )}
+                        {/* Column 2: F to I */}
+                        <div className="space-y-3 flex flex-col items-center">
+                            <InputField
+                                label="(F) ARR FUEL (KG)"
+                                value={arrFuel}
+                                onChange={setArrFuel}
+                            />
+                            <CalculatedField
+                                label="(G) METERED UPLIFT (KG)"
+                                formula="(D) x (E)"
+                                value={meteredUpliftKg}
+                            />
+                            <InputField
+                                label="(H) DEPARTURE FUEL (KG)"
+                                value={depFuel}
+                                onChange={setDepFuel}
+                            />
+                            <CalculatedField
+                                label="(I) FUEL USED ON GROUND (KG)"
+                                formula="(F) - (B)"
+                                value={fuelUsedOnGround}
+                            />
                         </div>
                     </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col items-center gap-1.5 pt-2 border-t border-white/10 mb-2 shrink-0">
+                        {error && (
+                            <div className="flex items-center gap-2 text-aviation-warning bg-aviation-warning/10 border border-aviation-warning/30 px-3 py-1.5 rounded-lg w-full max-w-[260px] justify-center">
+                                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wide">{error}</span>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={handleCalculate}
+                            className="w-full max-w-[200px] h-7 md:h-8 bg-aviation-accent text-black font-bold uppercase tracking-widest text-[9px] md:text-[10px] rounded-md hover:bg-white hover:scale-[1.02] transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-aviation-accent/20"
+                        >
+                            <Calculator className="w-3.5 h-3.5" />
+                            Calculate
+                        </button>
+                    </div>
+
+                    {/* Discrepancy Display at bottom */}
+                    {discrepancy !== null && (
+                        <div className="flex justify-center w-full shrink-0">
+                            <div className={cn(
+                                "flex flex-col items-center justify-center p-2 w-full max-w-[260px] rounded-lg border-2 transition-all animate-in fade-in zoom-in duration-300",
+                                Math.abs(discrepancy) > 500
+                                    ? "bg-aviation-warning/10 border-aviation-warning/40 shadow-[0_0_15px_rgba(239,68,68,0.15)]"
+                                    : "bg-aviation-success/10 border-aviation-success/40 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+                            )}>
+                                <div className="flex flex-col items-center justify-center w-full">
+                                    <div className="flex items-center justify-between w-full">
+                                        <div className="flex items-center gap-1.5">
+                                            <ArrowRightLeft className={cn("w-3 h-3", Math.abs(discrepancy) > 500 ? "text-aviation-warning" : "text-aviation-success")} />
+                                            <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-300">(J) DISCREPANCY</span>
+                                        </div>
+                                        <span className="text-[6px] text-slate-500 font-mono tracking-widest opacity-60">
+                                            [(G)-[(H)-(F)]]-(I)
+                                        </span>
+                                    </div>
+                                    <span className={cn(
+                                        "text-lg md:text-xl font-mono font-black tracking-tighter leading-none mt-1",
+                                        Math.abs(discrepancy) > 500 ? "text-aviation-warning" : "text-aviation-success"
+                                    )}>
+                                        {discrepancy > 0 ? '+' : ''}{discrepancy} kg
+                                    </span>
+                                </div>
+                                {Math.abs(discrepancy) > 500 && (
+                                    <div className="flex items-center gap-1.5 mt-1.5 text-aviation-warning bg-aviation-warning/20 px-2 py-0.5 rounded-sm border border-aviation-warning/30">
+                                        <AlertTriangle className="w-2.5 h-2.5" />
+                                        <span className="text-[6px] md:text-[7px] font-bold uppercase tracking-widest">Outside Limits (±500kg)</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
-function TechStat({ label, value }: { label: string, value: string }) {
+function InputField({ label, value, onChange, placeholder = "ENTER VALUE" }: { label: string, value: string, onChange: (v: string) => void, placeholder?: string }) {
     return (
-        <div className="flex flex-col">
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">{label}</span>
-            <span className="text-sm font-mono font-bold text-white">{value}</span>
+        <div className="bg-white/5 rounded-md border border-white/5 overflow-hidden focus-within:border-aviation-accent/50 transition-colors w-full">
+            <div className="px-2 py-1 bg-black/40 border-b border-white/5">
+                <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</label>
+            </div>
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
+                className="w-full bg-transparent px-2 py-1.5 text-sm md:text-base font-mono font-bold text-white placeholder:text-slate-700 focus:outline-none"
+            />
+        </div>
+    );
+}
+
+function CalculatedField({ label, formula, value }: { label: string, formula: string, value: number | null }) {
+    return (
+        <div className="bg-transparent rounded-md border border-dashed border-white/20 overflow-hidden relative w-full">
+            <div className="px-2 py-1 bg-black/20 flex justify-between items-center border-b border-dashed border-white/10">
+                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</label>
+                <span className="text-[8px] md:text-[9px] font-mono text-slate-600 tracking-widest">{formula}</span>
+            </div>
+            <div className="px-2 py-1.5 text-sm md:text-base font-mono font-bold text-aviation-accent/80">
+                {value !== null ? value : <span className="text-slate-700">-</span>}
+            </div>
         </div>
     );
 }

@@ -5,7 +5,7 @@ import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
 
 export const FlightInit: React.FC = () => {
-    const { flightData, setFlightData } = useStore();
+    const { flightData, setFlightData, clearFlightData } = useStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -33,34 +33,45 @@ export const FlightInit: React.FC = () => {
                 <p className="text-slate-400 text-xs md:text-sm">Load your LIDO Flight Plan to automatically initialize the EFB.</p>
             </section>
 
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 min-h-0">
-                <div
-                    className="md:col-span-1 glass-panel p-6 flex flex-col items-center justify-center border-dashed border-2 border-white/10 hover:border-aviation-accent/50 transition-colors cursor-pointer group shrink-0 md:shrink"
-                    onClick={() => document.getElementById('pdf-upload')?.click()}
-                >
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-aviation-accent/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        {loading ? (
-                            <Loader2 className="w-5 h-5 md:w-6 md:h-6 text-aviation-accent animate-spin" />
-                        ) : (
-                            <Upload className="w-5 h-5 md:w-6 md:h-6 text-aviation-accent" />
-                        )}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 min-h-0">
+                <div className="md:col-span-1 flex flex-col gap-4">
+                    <div
+                        className="glass-panel p-4 flex flex-col items-center justify-center border-dashed border-2 border-white/10 hover:border-aviation-accent/50 transition-colors cursor-pointer group shrink-0"
+                        onClick={() => document.getElementById('pdf-upload')?.click()}
+                    >
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-aviation-accent/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                            {loading ? (
+                                <Loader2 className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent animate-spin" />
+                            ) : (
+                                <Upload className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
+                            )}
+                        </div>
+                        <span className="text-xs font-semibold text-white">
+                            {loading ? 'Parsing...' : 'Upload LIDO PDF'}
+                        </span>
+                        <span className="text-[9px] text-slate-500 mt-1">Drag and drop or click</span>
+                        <input
+                            type="file"
+                            id="pdf-upload"
+                            accept="application/pdf"
+                            className="hidden"
+                            onChange={handleFileUpload}
+                        />
+                        {error && <p className="text-aviation-warning text-[10px] mt-2 text-center">{error}</p>}
                     </div>
-                    <span className="text-xs md:text-sm font-semibold text-white">
-                        {loading ? 'Parsing...' : 'Upload LIDO PDF'}
-                    </span>
-                    <span className="text-[9px] md:text-[10px] text-slate-500 mt-1">Drag and drop or click</span>
-                    <input
-                        type="file"
-                        id="pdf-upload"
-                        accept="application/pdf"
-                        className="hidden"
-                        onChange={handleFileUpload}
-                    />
-                    {error && <p className="text-aviation-warning text-[10px] mt-2 text-center">{error}</p>}
+
+                    {flightData && (
+                        <button
+                            onClick={clearFlightData}
+                            className="w-full py-2 px-4 rounded-lg border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:border-red-500/40 text-xs font-bold uppercase tracking-widest transition-all"
+                        >
+                            Clear Data
+                        </button>
+                    )}
                 </div>
 
                 {flightData && (
-                    <div className="md:col-span-2 glass-panel p-4 md:p-6 border-l-4 border-l-aviation-success flex flex-col min-h-0 animate-in fade-in slide-in-from-left-4 duration-300">
+                    <div className="md:col-span-3 glass-panel p-4 md:p-6 border-l-4 border-l-aviation-success flex flex-col min-h-0 animate-in fade-in slide-in-from-left-4 duration-300">
                         <div className="flex items-center gap-2 text-aviation-success mb-4 shrink-0">
                             <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />
                             <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">Data Loaded Successfully</span>

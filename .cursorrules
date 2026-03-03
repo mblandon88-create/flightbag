@@ -1,0 +1,6 @@
+# Offline / PWA App Requirements
+This application is used offline in environments such as an iPad during flight operations. 
+
+- **State Persistence:** All form input state (like the TechLog fields, Inflight variables, flight plan parsing) MUST be saved into the global Zustand store (`src/store/useStore.ts`) rather than kept in local component `useState` hooks. 
+- Input fields should never clear themselves simply because the user navigates between different tabs or refreshes the page, since their entries need to persist offline. 
+- You MUST ensure any new forms built in the project tie back to `useStore.ts` with local persistance setup via `zustand/middleware`.

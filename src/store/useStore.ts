@@ -12,6 +12,34 @@ export interface DGItem {
     location: string;
 }
 
+export interface TechLogData {
+    reqFuel: string;
+    qtyBeforeRefuel: string;
+    meteredUpliftLts: string;
+    specificGravity: string;
+    arrFuel: string;
+    depFuel: string;
+    reqUplift: number | null;
+    meteredUpliftKg: number | null;
+    fuelUsedOnGround: number | null;
+    discrepancy: number | null;
+    error: string | null;
+}
+
+const initialTechLogData: TechLogData = {
+    reqFuel: '',
+    qtyBeforeRefuel: '',
+    meteredUpliftLts: '',
+    specificGravity: '',
+    arrFuel: '',
+    depFuel: '',
+    reqUplift: null,
+    meteredUpliftKg: null,
+    fuelUsedOnGround: null,
+    discrepancy: null,
+    error: null,
+};
+
 export interface InflightData {
     activeSubTab: 'departure' | 'enroute' | 'arrival' | 'notes';
     waypointInputs: Record<number, { ata: string; fuel: string; }>;
@@ -40,6 +68,10 @@ interface EFBState {
     meteredUplift: number;
     setMeteredUplift: (kg: number) => void;
 
+    techLogData: TechLogData;
+    setTechLogData: (data: Partial<TechLogData>) => void;
+    clearTechLogData: () => void;
+
     // Dangerous Goods
     dgItems: DGItem[];
     addDGItem: (item: DGItem) => void;
@@ -58,10 +90,16 @@ export const useStore = create<EFBState>()(
             updateFlightData: (newData) => set((state) => ({
                 flightData: state.flightData ? { ...state.flightData, ...newData } : null
             })),
-            clearFlightData: () => set({ flightData: null, meteredUplift: 0, inflightData: initialInflightData }),
+            clearFlightData: () => set({ flightData: null, meteredUplift: 0, inflightData: initialInflightData, techLogData: initialTechLogData }),
 
             meteredUplift: 0,
             setMeteredUplift: (meteredUplift) => set({ meteredUplift }),
+
+            techLogData: initialTechLogData,
+            setTechLogData: (data) => set((state) => ({
+                techLogData: { ...(state.techLogData || initialTechLogData), ...data }
+            })),
+            clearTechLogData: () => set({ techLogData: initialTechLogData }),
 
             dgItems: [],
             addDGItem: (item) => set((state) => ({ dgItems: [...state.dgItems, item] })),
