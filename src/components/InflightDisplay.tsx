@@ -44,22 +44,54 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
     const [takeoffTime, setTakeoffTime] = useState<string>(
         inflightData?.takeoffTime || ''
     );
-    const defaultAtow = flightData ? flightData.etow.toString() : '';
-    const defaultAtf = flightData && flightData.rampFuel && flightData.taxiFuel
-        ? (parseInt(flightData.rampFuel) - parseInt(flightData.taxiFuel)).toString()
-        : '';
+    const tacticalRampFuel = (inflightData?.revisedRampFuel || flightData?.rampFuel || '0');
+    const taxiFuel = flightData?.taxiFuel || '0';
+    const tacticalAtf = (parseInt(tacticalRampFuel) - parseInt(taxiFuel)).toString();
+    const actualEzfw = (inflightData?.revisedEzfw || flightData?.ezfw || '0');
+    const tacticalAtow = (parseInt(actualEzfw) + parseInt(tacticalAtf)).toString();
 
     const [atow, setAtow] = useState<string>(
-        inflightData?.atow || defaultAtow
+        inflightData?.atow || tacticalAtow
     );
     const [atf, setAtf] = useState<string>(
-        inflightData?.atf || defaultAtf
+        inflightData?.atf || tacticalAtf
     );
+
+    // Track the last seen tactical values to detect changes
+    const lastTacticalAtow = useRef(tacticalAtow);
+    const lastTacticalAtf = useRef(tacticalAtf);
+
+    // Keep local state in sync with tactical planning from Performance tab
+    useEffect(() => {
+        // If the tactical calculation changed in the Performance tab, 
+        // update the Departure tab automatically.
+        if (tacticalAtow !== lastTacticalAtow.current) {
+            setAtow(tacticalAtow);
+            lastTacticalAtow.current = tacticalAtow;
+        }
+        if (tacticalAtf !== lastTacticalAtf.current) {
+            setAtf(tacticalAtf);
+            lastTacticalAtf.current = tacticalAtf;
+        }
+    }, [tacticalAtow, tacticalAtf]);
+
+    // Initial sync if store is empty but tactical values are available
+    useEffect(() => {
+        if (!inflightData?.atow && tacticalAtow !== '0') {
+            setAtow(tacticalAtow);
+        }
+        if (!inflightData?.atf && tacticalAtf !== '0') {
+            setAtf(tacticalAtf);
+        }
+    }, [tacticalAtow, tacticalAtf, inflightData?.atow, inflightData?.atf]);
 
     // Update inflightData in store when local state changes
     useEffect(() => {
-        setInflightData({ activeSubTab, waypointInputs, takeoffTime, atow, atf });
-    }, [activeSubTab, waypointInputs, takeoffTime, atow, atf, setInflightData]);
+        if (!flightData) return;
+        const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
+        const effectiveAtow = isOverMTOW ? (inflightData?.atow || tacticalAtow) : (atow || tacticalAtow);
+        setInflightData({ activeSubTab, waypointInputs, takeoffTime, atow: effectiveAtow, atf });
+    }, [activeSubTab, waypointInputs, takeoffTime, atow, atf, setInflightData, flightData, tacticalAtow]);
 
 
     const data = inflightData || {
@@ -334,8 +366,16 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                         setAtow(rawValue);
                                     }}
                                     placeholder={`e.g. ${flightData.etow}`}
-                                    className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                    className={cn(
+                                        "w-48 bg-black/40 border rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white",
+                                        atow && Number(atow) > Number(flightData.mtow) ? "border-red-500/50 bg-red-500/10" : "border-white/10"
+                                    )}
                                 />
+                                {atow && Number(atow) > Number(flightData.mtow) && (
+                                    <p className="text-[10px] font-bold text-red-500 uppercase mt-1 animate-pulse">
+                                        EXCEEDS MTOW! ({formatNumber(flightData.mtow)})
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-1 md:space-y-2">
                                 <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest block w-48">
@@ -376,7 +416,24 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 bg-white/5 border-b border-white/5 shrink-0 text-[10px] md:text-xs">
                                 <div className="flex items-center">
                                     <span className="text-slate-500 font-bold uppercase tracking-widest mr-2">ATOW:</span>
-                                    <span className={cn("font-mono font-bold", parseFloat(atow) <= Number(flightData.mlw) ? "text-aviation-success" : "text-white")}>{formatNumber(atow) || '-'}</span>
+                                    {(() => {
+                                        const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
+                                        const displayAtow = isOverMTOW ? tacticalAtow : (atow || tacticalAtow);
+                                        return (
+                                            <div className="flex items-center gap-1.5">
+                                                <span className={cn(
+                                                    "font-mono font-bold",
+                                                    parseFloat(displayAtow) <= Number(flightData.mlw) ? "text-aviation-success" : "text-white",
+                                                    isOverMTOW && "opacity-50"
+                                                )}>
+                                                    {formatNumber(displayAtow)}
+                                                </span>
+                                                {isOverMTOW && (
+                                                    <span className="text-[8px] text-red-500 font-bold uppercase">(MTOW Exceeded - Using Tactical Planning)</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                     {flightData.mlw && (
                                         <>
                                             <div className="w-px h-3 bg-white/10 mx-2"></div>
@@ -391,8 +448,10 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                             </div>
 
                             {(() => {
+                                if (!flightData) return null;
                                 const actualTF = parseFloat(atf) || Number(flightData.rampFuel);
-                                const actualTOW = parseFloat(atow) || Number(flightData.mtow);
+                                const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
+                                const actualTOW = isOverMTOW ? Number(flightData.etow) : (parseFloat(atow) || Number(flightData.mtow));
                                 const mlw = Number(flightData.mlw) || 0;
 
                                 let mlwWaypointIdx = -1;
@@ -431,7 +490,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                 </div>
                                                 <div className="flex items-center gap-4">
                                                     <div className="flex flex-col items-end">
-                                                        <span className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-tight">Time to MLW</span>
+                                                        <span className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-tight">Time</span>
                                                         <span className="text-xs md:text-sm font-mono font-bold text-aviation-warning leading-tight">
                                                             {(() => {
                                                                 const mlwWpEta = calculateEta(takeoffTime, waypointEntries[mlwWaypointIdx].stm);

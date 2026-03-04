@@ -4,6 +4,14 @@ import { Fuel, ArrowRightLeft, AlertTriangle, Calculator, AlertCircle } from 'lu
 import { cn } from '../lib/utils';
 import fuelDiscrepancyData from '../data/fueldiscrepancy.json';
 
+// Helper to format numbers with thin spaces for readability
+const formatNumber = (val: string | number) => {
+    const num = typeof val === 'string' ? parseInt(val) : val;
+    if (isNaN(num)) return val.toString();
+    // Using Unicode Thin Space (\u2009) for a narrower gap
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+};
+
 // Helper to determine the applicable limit
 function getDiscrepancyLimit(aircraftType: string, fobKg: number): number {
     const defaultLimit = 500;
@@ -241,7 +249,7 @@ export const TechLog: React.FC = () => {
                                         "text-lg md:text-xl font-mono font-black tracking-tighter leading-none mt-1",
                                         Math.abs(discrepancy) > applicableLimit ? "text-aviation-warning" : "text-aviation-success"
                                     )}>
-                                        {discrepancy > 0 ? '+' : ''}{discrepancy} kg
+                                        {discrepancy > 0 ? '+' : ''}{formatNumber(Math.abs(discrepancy))} kg
                                     </span>
                                 </div>
                                 <div className={cn(
@@ -252,7 +260,7 @@ export const TechLog: React.FC = () => {
                                 )}>
                                     {Math.abs(discrepancy) > applicableLimit && <AlertTriangle className="w-2.5 h-2.5" />}
                                     <span className="text-[6px] md:text-[7px] font-bold uppercase tracking-widest">
-                                        {Math.abs(discrepancy) > applicableLimit ? "Outside Limits" : "Within Limits"} (±{applicableLimit}kg)
+                                        {Math.abs(discrepancy) > applicableLimit ? "Outside Limits" : "Within Limits"} (±{formatNumber(applicableLimit)}kg)
                                     </span>
                                 </div>
                             </div>
@@ -265,6 +273,9 @@ export const TechLog: React.FC = () => {
 };
 
 function InputField({ label, value, onChange, placeholder = "ENTER VALUE" }: { label: string, value: string, onChange: (v: string) => void, placeholder?: string }) {
+    const isFloat = value.includes('.') || label.includes('GRAVITY');
+    const displayValue = isFloat ? value : (value ? formatNumber(value) : '');
+
     return (
         <div className="bg-white/5 rounded-md border border-white/5 overflow-hidden focus-within:border-aviation-accent/50 transition-colors w-full">
             <div className="px-2 py-1 bg-black/40 border-b border-white/5">
@@ -272,8 +283,9 @@ function InputField({ label, value, onChange, placeholder = "ENTER VALUE" }: { l
             </div>
             <input
                 type="text"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
+                inputMode={isFloat ? "decimal" : "numeric"}
+                value={displayValue}
+                onChange={(e) => onChange(e.target.value.replace(/\u2009/g, '').replace(/ /g, ''))}
                 placeholder={placeholder}
                 className="w-full bg-transparent px-2 py-1.5 text-sm md:text-base font-mono font-bold text-white placeholder:text-slate-700 focus:outline-none"
             />
@@ -289,7 +301,7 @@ function CalculatedField({ label, formula, value }: { label: string, formula: st
                 <span className="text-[8px] md:text-[9px] font-mono text-slate-600 tracking-widest">{formula}</span>
             </div>
             <div className="px-2 py-1.5 text-sm md:text-base font-mono font-bold text-aviation-accent/80">
-                {value !== null ? value : <span className="text-slate-700">-</span>}
+                {value !== null ? formatNumber(value) : <span className="text-slate-700">-</span>}
             </div>
         </div>
     );
