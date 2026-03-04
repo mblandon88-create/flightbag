@@ -44,6 +44,8 @@ export interface InflightData {
     departureATIS: string;
     arrivalATIS: string;
     notes: string;
+    atow: string;
+    atf: string;
 }
 
 const initialInflightData: InflightData = {
@@ -52,7 +54,9 @@ const initialInflightData: InflightData = {
     takeoffTime: '',
     departureATIS: '',
     arrivalATIS: '',
-    notes: ''
+    notes: '',
+    atow: '',
+    atf: ''
 };
 
 interface EFBState {

@@ -37,6 +37,7 @@ export interface ParsedFlightData {
     mtow: string;
     mzfw: string;
     ezfw: string;
+    etow: string;
     mlw: string;
     route: string;
     flightLevel: string;
@@ -178,6 +179,7 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
     const mzfwStr = weightMatch ? weightMatch[1] : (extractRegex(fullText, /MZFW\s+(\d+)/i) || '0');
     const ezfwStr = weightMatch ? weightMatch[2] : (extractRegex(fullText, /EZFW\s+(\d+)/i) || '0');
     const mtowStr = extractRegex(fullText, /MTOW\s+(\d+)/i) || '0';
+    const etowStr = extractRegex(fullText, /ETOW\s+(\d+)/i) || (parseInt(ezfwStr) + parseInt(calculatedRampFuel) - parseInt(taxiFuelStr)).toString();
     const mlwStr = extractRegex(fullText, /MLWT?\s+(\d+)/i) || extractRegex(fullText, /LAW\s+(\d+)/i) || '0';
 
     // Extract structured nav log entries, stopping at arrival ICAO
@@ -220,6 +222,7 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
         mzfw: round100(mzfwStr),
         ezfw: round100(ezfwStr),
         mtow: round100(mtowStr),
+        etow: round100(etowStr),
         mlw: round100(mlwStr),
         route: route || 'Not Found',
         flightLevel: flightLevel,
@@ -281,7 +284,7 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
         'CTM', 'RTA', 'ATA', 'RFOB', 'PAGE', 'PLAN', 'REM', 'REQ',
         'CLB', 'DSC', 'ELEV', 'DESC', 'FUEL', 'TIME', 'DIST', 'MACH',
         'TCAS', 'ADF', 'VOR', 'VHF', 'HF', 'NAV', 'LOG', 'OFF', 'ON', 'OUT', 'IN', 'DATE',
-        'DCT', 'FIR', 'UIR', 'NRP'
+        'DCT', 'FIR', 'UIR', 'NRP', 'EAST', 'WEST', 'NORTH', 'SOUTH'
     ]);
 
     const IS_STRUCTURAL_WPT = (t: string) => {
