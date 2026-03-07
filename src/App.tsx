@@ -5,6 +5,7 @@ import { Performance } from './components/Performance'
 import { TechLog } from './components/TechLog'
 import { DangerousGoods } from './components/DangerousGoods'
 import { InflightDisplay } from './components/InflightDisplay'
+import { InflightRest } from './components/InflightRest'
 import { PAGuide } from './components/PAGuide'
 import type { AppSection } from './types';
 import { useStore } from './store/useStore'
@@ -25,6 +26,7 @@ function App() {
       case 'techlog': return <TechLog />;
       case 'dangerous-goods': return <DangerousGoods />;
       case 'inflight': return <InflightDisplay />;
+      case 'inflight-rest': return <InflightRest />;
       case 'pa-guide': return <PAGuide />;
       default: return (
         <div className="flex-1 flex flex-col items-center justify-center text-slate-500">

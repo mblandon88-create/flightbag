@@ -37,6 +37,14 @@ const initialTechLogData: TechLogData = {
     error: null,
 };
 
+export interface RestData {
+    crewSize: '3' | '4';
+    pattern: 'Half and Half' | 'Thirds' | 'Four Breaks' | 'Primary / Relief';
+    startTime: string;
+    endTime: string;
+    buffer: number;
+}
+
 export interface InflightData {
     activeSubTab: 'departure' | 'enroute' | 'arrival' | 'notes';
     waypointInputs: Record<number, { ata: string; fuel: string; }>;
@@ -46,6 +54,9 @@ export interface InflightData {
     notes: string;
     atow: string;
     atf: string;
+    revisedEzfw: string;
+    revisedRampFuel: string;
+    restData: RestData;
 }
 
 const initialInflightData: InflightData = {
@@ -56,7 +67,16 @@ const initialInflightData: InflightData = {
     arrivalATIS: '',
     notes: '',
     atow: '',
-    atf: ''
+    atf: '',
+    revisedEzfw: '',
+    revisedRampFuel: '',
+    restData: {
+        crewSize: '4',
+        pattern: 'Half and Half',
+        startTime: '',
+        endTime: '',
+        buffer: 5
+    }
 };
 
 interface EFBState {
