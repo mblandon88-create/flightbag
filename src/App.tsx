@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MainLayout } from './components/MainLayout'
 import { FlightInit } from './components/FlightInit'
 import { Performance } from './components/Performance'
@@ -12,12 +12,33 @@ import { About } from './components/About'
 import type { AppSection } from './types';
 import { useStore } from './store/useStore'
 import { parseLidoText } from './utils/pdfParser'
-import { useEffect } from 'react'
 import './index.css'
 
 function App() {
   const [activeSection, setActiveSection] = useState<AppSection>('flight-init')
-  const { flightData } = useStore();
+  const { flightData, setFlightData } = useStore();
+
+  useEffect(() => {
+    // Handle Web Share Target intents from Safari/Mobile
+    const params = new URLSearchParams(window.location.search);
+    const sharedText = params.get('text') || params.get('title');
+    const sharedUrl = params.get('url');
+
+    if (sharedText || sharedUrl) {
+      try {
+        const textToParse = sharedText || sharedUrl || '';
+        if (textToParse.length > 50) {
+          const parsed = parseLidoText(textToParse);
+          setFlightData(parsed);
+          setActiveSection('flight-init');
+          // Clean up URL to prevent re-parsing on reload
+          window.history.replaceState({}, '', '/');
+        }
+      } catch (err) {
+        console.error('Failed to parse shared content:', err);
+      }
+    }
+  }, [setFlightData]);
 
   const routeLabel = flightData
     ? `${flightData.departure} ➔ ${flightData.arrival}`
