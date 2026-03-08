@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { parseLidoPDF, parseLidoText } from '../utils/pdfParser';
 import { Upload, Loader2, CheckCircle2, Clipboard } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { cn } from '../lib/utils';
+import { cn, formatNumber } from '../lib/utils';
 
 export const FlightInit: React.FC = () => {
     const { flightData, setFlightData, clearFlightData } = useStore();
@@ -179,10 +179,10 @@ export const FlightInit: React.FC = () => {
                                 value={`${Math.floor(flightData.tripTime / 60).toString().padStart(2, '0')}:${(flightData.tripTime % 60).toString().padStart(2, '0')}`}
                                 warning
                             />
-                            <DataField label="Trip Fuel" value={`${flightData.tripFuel} kg`} />
-                            <DataField label="Ramp Fuel" value={`${flightData.rampFuel} kg`} />
-                            <DataField label="MZFW" value={`${flightData.mzfw} kg`} />
-                            <DataField label="MTOW" value={`${flightData.mtow} kg`} />
+                            <DataField label="Trip Fuel" value={`${formatNumber(flightData.tripFuel)} kg`} />
+                            <DataField label="Ramp Fuel" value={`${formatNumber(flightData.rampFuel)} kg`} />
+                            <DataField label="MZFW" value={`${formatNumber(flightData.mzfw)} kg`} />
+                            <DataField label="MTOW" value={`${formatNumber(flightData.mtow)} kg`} />
 
                             <div className="col-span-2 pt-4 border-t border-white/5">
                                 <DataField label="Full Route String" value={flightData.route} mono />

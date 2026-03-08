@@ -257,7 +257,7 @@ function InputField({ label, value, onChange, placeholder = "ENTER VALUE" }: { l
                 type="text"
                 inputMode={isFloat ? "decimal" : "numeric"}
                 value={displayValue}
-                onChange={(e) => onChange(e.target.value.replace(/\u2009/g, '').replace(/ /g, ''))}
+                onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
                 placeholder={placeholder}
                 className="w-full bg-transparent px-2 py-1.5 text-sm md:text-base font-mono font-bold text-white placeholder:text-slate-700 focus:outline-none"
             />

@@ -13,5 +13,5 @@ export function formatNumber(val: string | number | null | undefined): string {
     if (val === null || val === undefined || val === '') return '';
     const num = typeof val === 'string' ? parseInt(val.replace(/[^\d]/g, '')) : Math.round(val);
     if (isNaN(num)) return val.toString();
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u202F");
 }
