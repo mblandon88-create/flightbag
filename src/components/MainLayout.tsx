@@ -51,7 +51,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
     ];
 
     return (
-        <div className="flex h-screen overflow-hidden bg-aviation-bg text-slate-200 font-sans">
+        <div className="flex h-dvh overflow-hidden bg-aviation-bg text-slate-200 font-sans">
             {/* Sidebar */}
             <aside className={cn(
                 "border-r border-white/5 bg-aviation-panel flex flex-col transition-all duration-300 shrink-0 relative",

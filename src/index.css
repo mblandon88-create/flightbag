@@ -16,8 +16,15 @@
 }
 
 @layer base {
+
+  html,
+  body,
+  #root {
+    @apply h-dvh m-0 p-0 overflow-hidden;
+  }
+
   body {
-    @apply bg-aviation-bg text-slate-200 font-sans antialiased overflow-hidden;
+    @apply bg-aviation-bg text-slate-200 font-sans antialiased;
   }
 }
 
