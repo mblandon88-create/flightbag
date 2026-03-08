@@ -53,18 +53,16 @@ export function ColdWeather() {
         setFixes(fixes.filter(f => f.id !== id));
     };
 
-    const updateFix = (id: string, field: keyof FixEntry, value: any) => {
+    const updateFix = (id: string, field: keyof FixEntry, value: string | boolean) => {
         setFixes(fixes.map(f => {
             if (f.id === id) {
-                // Ensure only one flag is set per fix if needed
                 if (field === 'isFAF' && value === true) return { ...f, isFAF: true, minimaType: 'NONE' };
-                if (field === 'minimaType' && value !== 'NONE') return { ...f, minimaType: value, isFAF: false };
+                if (field === 'minimaType' && value !== 'NONE') return { ...f, minimaType: value as any, isFAF: false };
                 return { ...f, [field]: value };
             }
-            // Unset others if setting unique flags (e.g. only 1 DA or 1 FAF if desired, 
-            // though technically multiple step-downs could exist, keeping DA unique helps logic)
+            if (field === 'isFAF' && value === true) return { ...f, isFAF: false };
             return f;
-        }));
+        }) as FixEntry[]);
     };
 
     const addStepDown = () => {
@@ -78,7 +76,6 @@ export function ColdWeather() {
     const updateStepDown = (id: string, field: keyof StepDownEntry, value: string) => {
         setStepDowns(stepDowns.map(s => s.id === id ? { ...s, [field]: value } : s));
     };
-
 
     const calculateCorrection = (publishedAlt: number, elev: number, temp: number): number => {
         if (temp >= 0) return 0;

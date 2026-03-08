@@ -49,33 +49,18 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         inflightData?.atf || tacticalAtf
     );
 
-    // Track the last seen tactical values to detect changes
-    const lastTacticalAtow = useRef(tacticalAtow);
-    const lastTacticalAtf = useRef(tacticalAtf);
+    // Track the last seen tactical values to detect changes and sync state during render
+    const [prevTacticalAtow, setPrevTacticalAtow] = useState(tacticalAtow);
+    const [prevTacticalAtf, setPrevTacticalAtf] = useState(tacticalAtf);
 
-    // Keep local state in sync with tactical planning from Performance tab
-    useEffect(() => {
-        // If the tactical calculation changed in the Performance tab, 
-        // update the Departure tab automatically.
-        if (tacticalAtow !== lastTacticalAtow.current) {
-            setAtow(tacticalAtow);
-            lastTacticalAtow.current = tacticalAtow;
-        }
-        if (tacticalAtf !== lastTacticalAtf.current) {
-            setAtf(tacticalAtf);
-            lastTacticalAtf.current = tacticalAtf;
-        }
-    }, [tacticalAtow, tacticalAtf]);
-
-    // Initial sync if store is empty but tactical values are available
-    useEffect(() => {
-        if (!inflightData?.atow && tacticalAtow !== '0') {
-            setAtow(tacticalAtow);
-        }
-        if (!inflightData?.atf && tacticalAtf !== '0') {
-            setAtf(tacticalAtf);
-        }
-    }, [tacticalAtow, tacticalAtf, inflightData?.atow, inflightData?.atf]);
+    if (tacticalAtow !== prevTacticalAtow) {
+        setPrevTacticalAtow(tacticalAtow);
+        setAtow(tacticalAtow);
+    }
+    if (tacticalAtf !== prevTacticalAtf) {
+        setPrevTacticalAtf(tacticalAtf);
+        setAtf(tacticalAtf);
+    }
 
     // Update inflightData in store when local state changes
     useEffect(() => {
@@ -83,7 +68,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
         const effectiveAtow = isOverMTOW ? (inflightData?.atow || tacticalAtow) : (atow || tacticalAtow);
         setInflightData({ activeSubTab, waypointInputs, takeoffTime, atow: effectiveAtow, atf });
-    }, [activeSubTab, waypointInputs, takeoffTime, atow, atf, setInflightData, flightData, tacticalAtow]);
+    }, [activeSubTab, waypointInputs, takeoffTime, atow, atf, setInflightData, flightData, tacticalAtow, inflightData?.atow]);
 
 
     const data = inflightData || {
@@ -112,13 +97,10 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
     };
 
-    const [activeIndex, setActiveIndex] = useState<number>(-1);
-
-    // Sync activeIndex with current time automatically
-    useEffect(() => {
-        if (!flightData?.waypointEntries) return;
+    // Sync activeIndex with current time automatically using memoized calculation
+    const autoActiveIndex = React.useMemo(() => {
+        if (!flightData?.waypointEntries) return -1;
         const nowNum = parseInt(currentTime, 10);
-        let foundIndex = -1;
         for (let i = 0; i < flightData.waypointEntries.length; i++) {
             const wp = flightData.waypointEntries[i];
             if (wp.isFir) continue;
@@ -126,15 +108,15 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
             if (eta) {
                 const etaNum = parseInt(eta.replace(':', ''), 10);
                 if (etaNum >= nowNum) {
-                    foundIndex = i;
-                    break;
+                    return i;
                 }
             }
         }
-        if (foundIndex !== -1) {
-            setActiveIndex(foundIndex);
-        }
+        return -1;
     }, [flightData?.waypointEntries, takeoffTime, currentTime]);
+
+    const [manualActiveIndex, setManualActiveIndex] = useState<number | null>(null);
+    const activeIndex = manualActiveIndex !== null ? manualActiveIndex : autoActiveIndex;
 
     useEffect(() => {
         if (activeSubTab === 'enroute' && activeIndex !== -1 && rowRefs.current[activeIndex]) {
@@ -536,7 +518,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                                         wp.isFir && !isHighlight ? "bg-aviation-accent/5" : ""
                                                                     )}
                                                                 >
-                                                                    <td className="px-4 py-2 md:py-3 cursor-pointer" onClick={() => setActiveIndex(idx)}>
+                                                                    <td className="px-4 py-2 md:py-3 cursor-pointer" onClick={() => setManualActiveIndex(idx)}>
                                                                         <div className="flex items-center gap-2">
                                                                             {wp.isFir ? (
                                                                                 <div className="flex items-center gap-2 text-aviation-accent">

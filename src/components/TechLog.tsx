@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { Fuel, ArrowRightLeft, AlertTriangle, Calculator, AlertCircle } from 'lucide-react';
 import { cn, formatNumber } from '../lib/utils';
@@ -27,13 +27,14 @@ function getDiscrepancyLimit(aircraftType: string, fobKg: number): number {
 
 export const TechLog: React.FC = () => {
     const { flightData, techLogData, setTechLogData } = useStore();
-    const [applicableLimit, setApplicableLimit] = useState<number>(500);
-
-    // Inputs mapped to global store
     const {
         reqFuel, qtyBeforeRefuel, meteredUpliftLts, specificGravity, arrFuel, depFuel,
         reqUplift, meteredUpliftKg, fuelUsedOnGround, discrepancy, error
     } = techLogData;
+
+    // Derived limit - moved to render to avoid cascading renders
+    const depFuelNum = parseFloat((depFuel || '').replace(/\s/g, '')) || 0;
+    const applicableLimit = flightData?.aircraftType ? getDiscrepancyLimit(flightData.aircraftType, depFuelNum) : 500;
 
     const setReqFuel = (val: string) => setTechLogData({ reqFuel: val });
     const setQtyBeforeRefuel = (val: string) => setTechLogData({ qtyBeforeRefuel: val });
@@ -42,10 +43,6 @@ export const TechLog: React.FC = () => {
     const setArrFuel = (val: string) => setTechLogData({ arrFuel: val });
     const setDepFuel = (val: string) => setTechLogData({ depFuel: val });
 
-    const setReqUplift = (val: number | null) => setTechLogData({ reqUplift: val });
-    const setMeteredUpliftKg = (val: number | null) => setTechLogData({ meteredUpliftKg: val });
-    const setFuelUsedOnGround = (val: number | null) => setTechLogData({ fuelUsedOnGround: val });
-    const setDiscrepancy = (val: number | null) => setTechLogData({ discrepancy: val });
     const setError = (val: string | null) => setTechLogData({ error: val });
 
     // Initialize default values from flight plan if available
@@ -58,16 +55,6 @@ export const TechLog: React.FC = () => {
         }
     }, [flightData]);
 
-    // Recalculate limit dynamically when arrFuel/depFuel/flightData changes, 
-    // but the FCOM table in the JSON implies the limit is based on "FOB after refueling" -> depFuel
-    useEffect(() => {
-        if (flightData?.aircraftType && depFuel) {
-            const fob = parseFloat(depFuel);
-            if (!isNaN(fob)) {
-                setApplicableLimit(getDiscrepancyLimit(flightData.aircraftType, fob));
-            }
-        }
-    }, [flightData?.aircraftType, depFuel]);
 
 
     if (!flightData) {
@@ -85,7 +72,7 @@ export const TechLog: React.FC = () => {
         // Required Inputs Validation
         if (!reqFuel || !qtyBeforeRefuel || !meteredUpliftLts || !specificGravity || !arrFuel || !depFuel) {
             setError('Please fill in all required fuel inputs to calculate discrepancy.');
-            setDiscrepancy(null);
+            setTechLogData({ discrepancy: null });
             return;
         }
 
@@ -104,30 +91,23 @@ export const TechLog: React.FC = () => {
 
         if (isNaN(A) || isNaN(B) || isNaN(D) || isNaN(E) || isNaN(F) || isNaN(H)) {
             setError('Invalid number format in one or more fields.');
-            setDiscrepancy(null);
+            setTechLogData({ discrepancy: null });
             return;
         }
 
         // Calculations
-        // (C) REQUIRED UPLIFT (KG) = (A) - (B)
         const C = A - B;
-        setReqUplift(C);
-
-        // (G) METERED UPLIFT (KG) = (D) X (E)
         const G = Math.round(D * E);
-        setMeteredUpliftKg(G);
-
-        // (I) FUEL USED ON GROUND (KG) = (F) - (B)
         const I = F - B;
-        setFuelUsedOnGround(I);
-
-        // Update limit just before calculating discrepancy
-        setApplicableLimit(getDiscrepancyLimit(flightData.aircraftType, H));
-
-
-        // (J) DISCREPANCY (KG) = [(G) - [(H) - (F)]] - (I)
         const J = Math.round((G - (H - F)) - I);
-        setDiscrepancy(J);
+
+        // Single state update for all calculated values
+        setTechLogData({
+            reqUplift: C,
+            meteredUpliftKg: G,
+            fuelUsedOnGround: I,
+            discrepancy: J
+        });
     };
 
     return (

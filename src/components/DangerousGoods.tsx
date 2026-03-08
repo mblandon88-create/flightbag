@@ -169,8 +169,27 @@ export const DangerousGoods: React.FC = () => {
     );
 };
 
+interface DGManifestItemProps {
+    item: {
+        id: string;
+        drillNo: string;
+        drillLetter?: string;
+    };
+    drill: {
+        drill_no: string;
+        inherent_risk: string;
+        risk_to_aircraft: string;
+        risk_to_occupants: string;
+        spill_or_leak_procedure: string;
+        firefighting_procedure: string;
+        additional_considerations: string;
+    } | undefined;
+    letterDef: string | null;
+    remove: () => void;
+}
+
 // Sub-component for individual DG manifest items (handles expand/collapse)
-function DGManifestItem({ item, drill, letterDef, remove }: { item: any; drill: any; letterDef: any; remove: () => void; }) {
+function DGManifestItem({ item, drill, letterDef, remove }: DGManifestItemProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
