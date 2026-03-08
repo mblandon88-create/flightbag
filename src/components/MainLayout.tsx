@@ -118,42 +118,42 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-hidden">
                 {/* Top Bar */}
-                <header className="h-12 md:h-14 border-bottom border-white/5 bg-aviation-panel/50 backdrop-blur-xl flex items-center justify-between px-4 md:px-8 shrink-0 relative pt-[env(safe-area-inset-top)]">
-                    <div className="flex items-center gap-2 md:gap-4 z-10 max-w-[30%]">
-                        <h2 className="text-sm md:text-base font-semibold text-white truncate max-w-[120px] md:max-w-none">
+                <header className="h-14 md:h-16 border-bottom border-white/5 bg-aviation-panel/50 backdrop-blur-xl flex items-center justify-between px-4 md:px-8 shrink-0 relative pt-[env(safe-area-inset-top)]">
+                    <div className="flex items-center gap-2 md:gap-4 z-10 max-w-[35%]">
+                        <h2 className="text-sm md:text-lg font-semibold text-white truncate max-w-[120px] md:max-w-none">
                             {navItems.find(i => i.id === activeSection)?.label}
                         </h2>
                         <div className="h-4 w-[1px] bg-white/10" />
-                        <div className="flex items-center gap-2 text-slate-400 hidden sm:flex truncate">
+                        <div className="flex items-center gap-2 text-slate-400 flex truncate">
                             <MapPin className="w-3 h-3 md:w-4 md:h-4 shrink-0" />
                             <span className="text-[10px] md:text-xs font-mono truncate">{route}</span>
                         </div>
                     </div>
 
                     {flightNumber && activeSection !== 'flight-init' && (
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 hidden sm:flex">
-                            <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-0.5">Flight</span>
-                            <span className="text-base md:text-lg font-mono font-bold text-aviation-success drop-shadow-md leading-none">{flightNumber}</span>
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 flex">
+                            <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">Flight</span>
+                            <span className="text-base md:text-xl font-mono font-bold text-aviation-success drop-shadow-md leading-none">{flightNumber}</span>
                         </div>
                     )}
 
                     <div className="flex items-center gap-3 md:gap-6 z-10 w-auto justify-end">
-                        <div className="flex flex-col items-end hidden md:flex">
-                            <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest">Date (UTC)</span>
-                            <span className="text-xs md:text-sm font-mono font-medium text-aviation-accent leading-none">
+                        <div className="flex flex-col items-end flex">
+                            <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Date (UTC)</span>
+                            <span className="text-sm md:text-lg font-mono font-medium text-aviation-accent leading-none">
                                 {currentTime.getUTCDate().toString().padStart(2, '0')} {currentTime.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' }).toUpperCase()} {currentTime.getUTCFullYear()}
                             </span>
                         </div>
-                        <div className="h-6 w-[1px] bg-white/10 hidden md:block" />
+                        <div className="h-8 w-[1px] bg-white/10 block" />
                         <div className="flex flex-col items-end">
-                            <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest">Zulu Time</span>
-                            <span className="text-xs md:text-sm font-mono font-medium text-aviation-accent leading-none">{formatZulu(currentTime)}</span>
+                            <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Zulu Time</span>
+                            <span className="text-sm md:text-lg font-mono font-medium text-aviation-accent leading-none">{formatZulu(currentTime)}</span>
                         </div>
                     </div>
                 </header>
 
                 {/* Content Area */}
-                <div className="flex-1 min-h-0 p-3 md:p-4 lg:p-6 flex flex-col pb-[env(safe-area-inset-bottom)]">
+                <div className="flex-1 min-h-0 p-3 md:p-6 lg:p-8 flex flex-col pb-[env(safe-area-inset-bottom)]">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={activeSection}
