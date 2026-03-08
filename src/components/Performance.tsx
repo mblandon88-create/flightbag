@@ -1,14 +1,7 @@
 import React from 'react';
 import { useStore } from '../store/useStore';
 import { Fuel, Weight } from 'lucide-react';
-import { cn } from '../lib/utils';
-
-const formatNumber = (val: string | number) => {
-    const num = typeof val === 'string' ? parseInt(val) : val;
-    if (isNaN(num)) return val.toString();
-    // Using Unicode Thin Space (\u2009) for a narrower gap
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
-};
+import { cn, formatNumber } from '../lib/utils';
 
 export const Performance: React.FC = () => {
     const { flightData, updateFlightData, inflightData, setInflightData } = useStore();

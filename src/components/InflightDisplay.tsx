@@ -7,7 +7,7 @@ import {
     Plane,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { cn } from '../lib/utils';
+import { cn, formatNumber } from '../lib/utils';
 
 type SubTab = 'departure' | 'enroute' | 'arrival' | 'notes';
 
@@ -19,14 +19,6 @@ interface WaypointInput {
     ata: string;
     fuel: string;
 }
-
-const formatNumber = (val: string | number) => {
-    if (!val) return '';
-    const numStr = val.toString().replace(/[^\d]/g, '');
-    if (!numStr) return '';
-    const num = parseInt(numStr);
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
-};
 
 export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab = 'departure' }) => {
     const flightData = useStore((state) => state.flightData);
@@ -104,8 +96,6 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
     };
 
     const [currentTime, setCurrentTime] = useState<string>(new Date().getUTCHours().toString().padStart(2, '0') + new Date().getUTCMinutes().toString().padStart(2, '0'));
-    const [activeIndex, setActiveIndex] = useState<number>(-1);
-
     const rowRefs = useRef<Record<number, HTMLTableRowElement | null>>({});
 
     const calculateEta = (takeoff: string, ctmMinutes: number) => {
@@ -122,12 +112,13 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
     };
 
-    // Derived state for the active index, calculated on the fly instead of effect-driven state if possible,
-    // but the scroll behavior requires layout. Let's keep setActiveIndex but suppress or refactor.
-    // Instead of an effect setting state, we can just calculate activeIndex during render.
-    let calculatedIndex = -1;
-    if (flightData?.waypointEntries) {
+    const [activeIndex, setActiveIndex] = useState<number>(-1);
+
+    // Sync activeIndex with current time automatically
+    useEffect(() => {
+        if (!flightData?.waypointEntries) return;
         const nowNum = parseInt(currentTime, 10);
+        let foundIndex = -1;
         for (let i = 0; i < flightData.waypointEntries.length; i++) {
             const wp = flightData.waypointEntries[i];
             if (wp.isFir) continue;
@@ -135,16 +126,15 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
             if (eta) {
                 const etaNum = parseInt(eta.replace(':', ''), 10);
                 if (etaNum >= nowNum) {
-                    calculatedIndex = i;
+                    foundIndex = i;
                     break;
                 }
             }
         }
-    }
-
-    if (calculatedIndex !== activeIndex) {
-        setActiveIndex(calculatedIndex);
-    }
+        if (foundIndex !== -1) {
+            setActiveIndex(foundIndex);
+        }
+    }, [flightData?.waypointEntries, takeoffTime, currentTime]);
 
     useEffect(() => {
         if (activeSubTab === 'enroute' && activeIndex !== -1 && rowRefs.current[activeIndex]) {
@@ -263,15 +253,29 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
     }
 
     return (
-        <div className="flex-1 flex flex-col gap-4 min-h-0">
-            <div className="flex items-center justify-between shrink-0">
-                <div className="flex p-1 bg-white/5 rounded-xl border border-white/5">
+        <div className="h-full flex flex-col pt-0 overflow-hidden">
+            {/* Header */}
+            <section className="px-2 mb-2 shrink-0 flex items-center justify-between">
+                <h3 className="text-md md:text-lg font-bold text-white flex items-center gap-2">
+                    <Navigation className="w-5 h-5 text-aviation-accent" />
+                    Inflight Management
+                </h3>
+                <div className="hidden md:flex items-center gap-4 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+                    <div className="flex flex-col text-left">
+                        <span className="text-[9px] text-slate-500 font-bold tracking-widest uppercase">Dest Local Time</span>
+                        <span className="text-lg font-mono font-bold text-aviation-accent leading-none mt-0.5">{getLocalTime(currentTime, flightData.destTimezoneOffset || '')}</span>
+                    </div>
+                </div>
+            </section>
+
+            <div className="flex-1 flex flex-col gap-4 min-h-0 px-2">
+                <div className="flex p-0.5 bg-white/5 rounded-lg border border-white/5 w-fit shrink-0">
                     {['departure', 'enroute', 'arrival', 'notes'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveSubTab(tab as SubTab)}
                             className={cn(
-                                "px-4 md:px-6 py-1.5 md:py-2 rounded-lg text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all",
+                                "px-3 md:px-4 py-1 md:py-1.5 rounded-md text-[9px] md:text-[10px] font-bold uppercase tracking-widest transition-all",
                                 activeSubTab === tab
                                     ? "bg-aviation-accent text-black shadow-lg shadow-aviation-accent/20"
                                     : "text-slate-500 hover:text-slate-300"
@@ -282,487 +286,480 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                     ))}
                 </div>
 
-                <div className="hidden md:flex items-center gap-4 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-                    <div className="flex flex-col text-left">
-                        <span className="text-[9px] text-slate-500 font-bold tracking-widest uppercase">Dest Local Time</span>
-                        <span className="text-lg font-mono font-bold text-aviation-accent leading-none mt-0.5">{getLocalTime(currentTime, flightData.destTimezoneOffset || '')}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0">
-                {activeSubTab === 'departure' && (
-                    <div className="flex-1 p-3 md:p-5 space-y-3 md:space-y-5 overflow-y-auto custom-scrollbar">
-                        <div className="flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-aviation-success/10 flex items-center justify-center">
-                                    <Plane className="w-3.5 h-3.5 md:w-4 md:h-4 text-aviation-success rotate-45" />
-                                </div>
-                                <div>
-                                    <h4 className="text-xs md:text-base font-bold text-white">Departure: {flightData.departure}</h4>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest">Origin Airport</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest">STD</span>
-                                <p className="text-md md:text-lg font-mono font-bold text-aviation-warning">
-                                    {flightData.std.includes('/') ? `${flightData.std.split('/')[1].substring(0, 2)}:${flightData.std.split('/')[1].substring(2, 4)}` : flightData.std}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 md:gap-4">
-                            <div className="space-y-1 md:space-y-2">
-                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest w-48 block">Block Off Time Z</label>
-                                <input
-                                    type="time"
-                                    value={formatTimeForInput(waypointInputs[-1]?.ata)}
-                                    onChange={(e) => setWaypointInputs(prev => ({ ...prev, [-1]: { ...prev[-1], ata: e.target.value.replace(':', '') } }))}
-                                    className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
-                                />
-                                {(() => {
-                                    const blockOff = waypointInputs[-1]?.ata;
-                                    const blockOffClean = blockOff?.replace(':', '') || '';
-                                    if (blockOffClean.length !== 4) return null;
-                                    const stdClean = flightData.std.includes('/') ? flightData.std.split('/')[1] : flightData.std;
-                                    const delay = diffMinutes(blockOffClean, stdClean);
-                                    return (
-                                        <p className={cn("text-[10px] font-bold uppercase", delay > 0 ? "text-aviation-warning" : "text-aviation-success")}>
-                                            {delay > 0 ? `Delay: +${delay} min` : `Early: ${Math.abs(delay)} min`}
-                                        </p>
-                                    );
-                                })()}
-                            </div>
-                            <div className="space-y-1 md:space-y-2">
-                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest w-48 block">T.O Time Z</label>
-                                <input
-                                    type="time"
-                                    value={takeoffTime}
-                                    onChange={(e) => setTakeoffTime(e.target.value)}
-                                    className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
-                                />
-                                {takeoffTime && (
-                                    <p className="text-[10px] font-bold uppercase text-aviation-accent">
-                                        EST ETA: {calculateEta(takeoffTime, flightData.tripTime)} Z
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 md:gap-4">
-                            <div className="space-y-1 md:space-y-2">
-                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest block w-48">
-                                    <div className="flex flex-col">
-                                        <span>Actual T.O Weight</span>
-                                        <span className="text-[8px] text-slate-600 font-normal normal-case whitespace-nowrap -mt-0.5">ETOW: {formatNumber(flightData.etow)}</span>
+                <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0">
+                    {activeSubTab === 'departure' && (
+                        <div className="flex-1 p-3 md:p-5 space-y-3 md:space-y-5 overflow-y-auto custom-scrollbar">
+                            <div className="flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-aviation-success/10 flex items-center justify-center">
+                                        <Plane className="w-3.5 h-3.5 md:w-4 md:h-4 text-aviation-success rotate-45" />
                                     </div>
-                                </label>
-                                <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={formatNumber(atow)}
-                                    onChange={(e) => {
-                                        const rawValue = e.target.value.replace(/[^\d]/g, '');
-                                        setAtow(rawValue);
-                                    }}
-                                    placeholder={`e.g. ${flightData.etow}`}
-                                    className={cn(
-                                        "w-48 bg-black/40 border rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white",
-                                        atow && Number(atow) > Number(flightData.mtow) ? "border-red-500/50 bg-red-500/10" : "border-white/10"
-                                    )}
-                                />
-                                {atow && Number(atow) > Number(flightData.mtow) && (
-                                    <p className="text-[10px] font-bold text-red-500 uppercase mt-1 animate-pulse">
-                                        EXCEEDS MTOW! ({formatNumber(flightData.mtow)})
-                                    </p>
-                                )}
-                            </div>
-                            <div className="space-y-1 md:space-y-2">
-                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest block w-48">
-                                    <div className="flex flex-col">
-                                        <span>Actual T.O Fuel</span>
-                                        <span className="text-[8px] text-slate-600 font-normal normal-case whitespace-nowrap -mt-0.5">Ramp: {formatNumber(flightData.rampFuel)}</span>
+                                    <div>
+                                        <h4 className="text-xs md:text-base font-bold text-white">Departure: {flightData.departure}</h4>
+                                        <p className="text-[9px] text-slate-500 uppercase tracking-widest">Origin Airport</p>
                                     </div>
-                                </label>
-                                <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={formatNumber(atf)}
-                                    onChange={(e) => {
-                                        const rawValue = e.target.value.replace(/[^\d]/g, '');
-                                        setAtf(rawValue);
-                                    }}
-                                    placeholder={`e.g. ${flightData.rampFuel}`}
-                                    className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
-                                />
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest">STD</span>
+                                    <p className="text-md md:text-lg font-mono font-bold text-aviation-warning">
+                                        {flightData.std.includes('/') ? `${flightData.std.split('/')[1].substring(0, 2)}:${flightData.std.split('/')[1].substring(2, 4)}` : flightData.std}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="flex-1 space-y-1 md:space-y-2 min-h-0">
-                            <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Departure ATIS / CLEARANCE</label>
-                            <textarea
-                                value={data.departureATIS || ''}
-                                onChange={(e) => setInflightData({ departureATIS: e.target.value })}
-                                placeholder="ATIS Info D, QNH 1013..."
-                                className="w-full flex-1 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-xs md:text-sm min-h-[80px] focus:outline-none focus:border-aviation-accent resize-none text-white"
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {activeSubTab === 'enroute' && (
-                    <>
-                        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3 bg-white/5 border-b border-white/5 shrink-0 text-[10px] md:text-xs">
-                                <div className="flex items-center">
-                                    <span className="text-slate-500 font-bold uppercase tracking-widest mr-2">ATOW:</span>
+                            <div className="grid grid-cols-2 gap-3 md:gap-4">
+                                <div className="space-y-1 md:space-y-2">
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">Block Off Time Z</label>
+                                    <input
+                                        type="time"
+                                        value={formatTimeForInput(waypointInputs[-1]?.ata)}
+                                        onChange={(e) => setWaypointInputs(prev => ({ ...prev, [-1]: { ...prev[-1], ata: e.target.value.replace(':', '') } }))}
+                                        className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                    />
                                     {(() => {
-                                        const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
-                                        const displayAtow = isOverMTOW ? tacticalAtow : (atow || tacticalAtow);
+                                        const blockOff = waypointInputs[-1]?.ata;
+                                        const blockOffClean = blockOff?.replace(':', '') || '';
+                                        if (blockOffClean.length !== 4) return null;
+                                        const stdClean = flightData.std.includes('/') ? flightData.std.split('/')[1] : flightData.std;
+                                        const delay = diffMinutes(blockOffClean, stdClean);
                                         return (
-                                            <div className="flex items-center gap-1.5">
-                                                <span className={cn(
-                                                    "font-mono font-bold",
-                                                    parseFloat(displayAtow) <= Number(flightData.mlw) ? "text-aviation-success" : "text-white",
-                                                    isOverMTOW && "opacity-50"
-                                                )}>
-                                                    {formatNumber(displayAtow)}
-                                                </span>
-                                                {isOverMTOW && (
-                                                    <span className="text-[8px] text-red-500 font-bold uppercase">(MTOW Exceeded - Using Tactical Planning)</span>
-                                                )}
-                                            </div>
+                                            <p className={cn("text-[10px] font-bold uppercase", delay > 0 ? "text-aviation-warning" : "text-aviation-success")}>
+                                                {delay > 0 ? `Delay: +${delay} min` : `Early: ${Math.abs(delay)} min`}
+                                            </p>
                                         );
                                     })()}
-                                    {flightData.mlw && (
-                                        <>
-                                            <div className="w-px h-3 bg-white/10 mx-2"></div>
-                                            <span className="text-slate-600 font-mono">MLW: {formatNumber(flightData.mlw)}</span>
-                                        </>
-                                    )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-slate-500 font-bold uppercase tracking-widest">ATF:</span>
-                                    <span className="text-white font-mono font-bold">{formatNumber(atf) || '-'}</span>
+                                <div className="space-y-1 md:space-y-2">
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">T.O Time Z</label>
+                                    <input
+                                        type="time"
+                                        value={takeoffTime}
+                                        onChange={(e) => setTakeoffTime(e.target.value)}
+                                        className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                    />
+                                    {takeoffTime && (
+                                        <p className="text-[10px] font-bold uppercase text-aviation-accent">
+                                            EST ETA: {calculateEta(takeoffTime, flightData.tripTime)} Z
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
-                            {(() => {
-                                if (!flightData) return null;
-                                const actualTF = parseFloat(atf) || Number(flightData.rampFuel);
-                                const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
-                                const actualTOW = isOverMTOW ? Number(flightData.etow) : (parseFloat(atow) || Number(flightData.mtow));
-                                const mlw = Number(flightData.mlw) || 0;
+                            <div className="grid grid-cols-2 gap-3 md:gap-4">
+                                <div className="space-y-1 md:space-y-2">
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">
+                                        <div className="flex flex-col">
+                                            <span>Actual T.O Weight</span>
+                                            <span className="text-[8px] text-slate-600 font-normal normal-case whitespace-nowrap -mt-0.5">ETOW: {formatNumber(flightData.etow)}</span>
+                                        </div>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={formatNumber(atow)}
+                                        onChange={(e) => {
+                                            const rawValue = e.target.value.replace(/[^\d]/g, '');
+                                            setAtow(rawValue);
+                                        }}
+                                        placeholder={`e.g. ${flightData.etow}`}
+                                        className={cn(
+                                            "w-48 bg-black/40 border rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white",
+                                            atow && Number(atow) > Number(flightData.mtow) ? "border-red-500/50 bg-red-500/10" : "border-white/10"
+                                        )}
+                                    />
+                                    {atow && Number(atow) > Number(flightData.mtow) && (
+                                        <p className="text-[10px] font-bold text-red-500 uppercase mt-1 animate-pulse">
+                                            EXCEEDS MTOW! ({formatNumber(flightData.mtow)})
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="space-y-1 md:space-y-2">
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">
+                                        <div className="flex flex-col">
+                                            <span>Actual T.O Fuel</span>
+                                            <span className="text-[8px] text-slate-600 font-normal normal-case whitespace-nowrap -mt-0.5">Ramp: {formatNumber(flightData.rampFuel)}</span>
+                                        </div>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={formatNumber(atf)}
+                                        onChange={(e) => {
+                                            const rawValue = e.target.value.replace(/[^\d]/g, '');
+                                            setAtf(rawValue);
+                                        }}
+                                        placeholder={`e.g. ${flightData.rampFuel}`}
+                                        className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                    />
+                                </div>
+                            </div>
 
-                                let mlwWaypointIdx = -1;
-                                let hideBanner = false;
-                                if (mlw > 0) {
-                                    if (actualTOW <= mlw) {
-                                        hideBanner = true;
-                                    } else {
-                                        for (let i = 0; i < waypointEntries.length; i++) {
-                                            if (waypointEntries[i].isFir) continue;
-                                            const burnedFuel = actualTF - (Number(waypointEntries[i].rfob) * 1000);
-                                            const estWeight = actualTOW - burnedFuel;
-                                            if (estWeight <= mlw) {
-                                                mlwWaypointIdx = i;
-                                                const mlwWpEta = calculateEta(takeoffTime, waypointEntries[i].stm);
-                                                if (mlwWpEta && currentTime && mlwWpEta !== '-' && currentTime !== '-') {
-                                                    if (diffMinutes(mlwWpEta, currentTime) <= 0) {
-                                                        hideBanner = true;
+                            <div className="flex-1 space-y-1 md:space-y-2 min-h-0">
+                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Departure ATIS / CLEARANCE</label>
+                                <textarea
+                                    value={data.departureATIS || ''}
+                                    onChange={(e) => setInflightData({ departureATIS: e.target.value })}
+                                    placeholder="ATIS Info D, QNH 1013..."
+                                    className="w-full flex-1 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-xs md:text-sm min-h-[80px] focus:outline-none focus:border-aviation-accent resize-none text-white"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {activeSubTab === 'enroute' && (
+                        <>
+                            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-white/5 border-b border-white/5 shrink-0 text-[9px] md:text-[10px]">
+                                    <div className="flex items-center">
+                                        <span className="text-slate-500 font-bold uppercase tracking-widest mr-2">ATOW:</span>
+                                        {(() => {
+                                            const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
+                                            const displayAtow = isOverMTOW ? tacticalAtow : (atow || tacticalAtow);
+                                            return (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={cn(
+                                                        "font-mono font-bold",
+                                                        parseFloat(displayAtow) <= Number(flightData.mlw) ? "text-aviation-success" : "text-white",
+                                                        isOverMTOW && "opacity-50"
+                                                    )}>
+                                                        {formatNumber(displayAtow)}
+                                                    </span>
+                                                    {isOverMTOW && (
+                                                        <span className="text-[8px] text-red-500 font-bold uppercase">(MTOW Exceeded - Using Tactical Planning)</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                        {flightData.mlw && (
+                                            <>
+                                                <div className="w-px h-3 bg-white/10 mx-2"></div>
+                                                <span className="text-slate-600 font-mono">MLW: {formatNumber(flightData.mlw)}</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-slate-500 font-bold uppercase tracking-widest">ATF:</span>
+                                        <span className="text-white font-mono font-bold">{formatNumber(atf) || '-'}</span>
+                                    </div>
+                                </div>
+
+                                {(() => {
+                                    if (!flightData) return null;
+                                    const actualTF = parseFloat(atf) || Number(flightData.rampFuel);
+                                    const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
+                                    const actualTOW = isOverMTOW ? Number(flightData.etow) : (parseFloat(atow) || Number(flightData.mtow));
+                                    const mlw = Number(flightData.mlw) || 0;
+
+                                    let mlwWaypointIdx = -1;
+                                    let hideBanner = false;
+                                    if (mlw > 0) {
+                                        if (actualTOW <= mlw) {
+                                            hideBanner = true;
+                                        } else {
+                                            for (let i = 0; i < waypointEntries.length; i++) {
+                                                if (waypointEntries[i].isFir) continue;
+                                                const burnedFuel = actualTF - (Number(waypointEntries[i].rfob) * 1000);
+                                                const estWeight = actualTOW - burnedFuel;
+                                                if (estWeight <= mlw) {
+                                                    mlwWaypointIdx = i;
+                                                    const mlwWpEta = calculateEta(takeoffTime, waypointEntries[i].stm);
+                                                    if (mlwWpEta && currentTime && mlwWpEta !== '-' && currentTime !== '-') {
+                                                        if (diffMinutes(mlwWpEta, currentTime) <= 0) {
+                                                            hideBanner = true;
+                                                        }
                                                     }
+                                                    break;
                                                 }
-                                                break;
                                             }
                                         }
                                     }
-                                }
 
-                                return (
-                                    <>
-                                        {mlwWaypointIdx !== -1 && !hideBanner && (
-                                            <div className="bg-aviation-warning/10 border-b border-aviation-warning/30 px-4 py-1 flex items-center justify-between shrink-0 z-20">
-                                                <div className="flex items-center gap-2">
-                                                    <Plane className="w-3.5 h-3.5 text-aviation-warning -rotate-45" />
-                                                    <span className="text-[10px] md:text-xs font-bold text-aviation-warning uppercase tracking-widest">
-                                                        Below MLW At: <span className="text-white font-mono">{waypointEntries[mlwWaypointIdx].name}</span>
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-tight">Time</span>
-                                                        <span className="text-xs md:text-sm font-mono font-bold text-aviation-warning leading-tight">
-                                                            {(() => {
-                                                                const mlwWpEta = calculateEta(takeoffTime, waypointEntries[mlwWaypointIdx].stm);
-                                                                if (!mlwWpEta || !currentTime || mlwWpEta === '-' || currentTime === '-') return '--';
-                                                                const minsLeft = diffMinutes(mlwWpEta, currentTime);
-                                                                if (minsLeft <= 0) return '0h 00m'; // Handled by hideBanner, but safe fallback
-                                                                return `${Math.floor(minsLeft / 60)}h ${(minsLeft % 60).toString().padStart(2, '0')}m`;
-                                                            })()}
+                                    return (
+                                        <>
+                                            {mlwWaypointIdx !== -1 && !hideBanner && (
+                                                <div className="bg-aviation-warning/10 border-b border-aviation-warning/30 px-4 py-1 flex items-center justify-between shrink-0 z-20">
+                                                    <div className="flex items-center gap-2">
+                                                        <Plane className="w-3.5 h-3.5 text-aviation-warning -rotate-45" />
+                                                        <span className="text-[10px] md:text-xs font-bold text-aviation-warning uppercase tracking-widest">
+                                                            Below MLW At: <span className="text-white font-mono">{waypointEntries[mlwWaypointIdx].name}</span>
                                                         </span>
                                                     </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-tight">Time</span>
+                                                            <span className="text-xs md:text-sm font-mono font-bold text-aviation-warning leading-tight">
+                                                                {(() => {
+                                                                    const mlwWpEta = calculateEta(takeoffTime, waypointEntries[mlwWaypointIdx].stm);
+                                                                    if (!mlwWpEta || !currentTime || mlwWpEta === '-' || currentTime === '-') return '--';
+                                                                    const minsLeft = diffMinutes(mlwWpEta, currentTime);
+                                                                    if (minsLeft <= 0) return '0h 00m'; // Handled by hideBanner, but safe fallback
+                                                                    return `${Math.floor(minsLeft / 60)}h ${(minsLeft % 60).toString().padStart(2, '0')}m`;
+                                                                })()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
 
-                                        <div className="flex-1 overflow-auto custom-scrollbar">
-                                            <table className="w-full text-left border-collapse min-w-[700px]">
-                                                <thead className="sticky top-0 z-10 bg-[#0a0a0a]">
-                                                    <tr className="bg-white/5 border-b border-white/5">
-                                                        <th className="px-4 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">Waypoint</th>
-                                                        <th className="px-4 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">TRK/DIS</th>
-                                                        <th className="px-4 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">PLN ETA</th>
-                                                        <th className="px-4 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">ATA (Z)</th>
-                                                        <th className="px-4 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">PLN Fuel</th>
-                                                        <th className="px-4 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">ACT Fuel</th>
-                                                        <th className="px-4 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">Diff</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-white/5">
-                                                    {waypointEntries.map((wp, idx) => {
-                                                        const input = waypointInputs[idx] || { ata: '', fuel: '' };
-                                                        const isHighlight = idx === activeIndex;
-                                                        const plnFuel = wp.rfob;
-                                                        const actFuel = parseFloat(input.fuel);
-                                                        const diff = !isNaN(actFuel) ? (actFuel - plnFuel).toFixed(1) : null;
+                                            <div className="flex-1 overflow-auto custom-scrollbar">
+                                                <table className="w-full text-left border-collapse min-w-[700px]">
+                                                    <thead className="sticky top-0 z-10 bg-[#0a0a0a]">
+                                                        <tr className="bg-white/5 border-b border-white/5">
+                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">Waypoint</th>
+                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">TRK/DIS</th>
+                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">PLN ETA</th>
+                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">ATA (Z)</th>
+                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">PLN Fuel</th>
+                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">ACT Fuel</th>
+                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">Diff</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-white/5">
+                                                        {waypointEntries.map((wp, idx) => {
+                                                            const input = waypointInputs[idx] || { ata: '', fuel: '' };
+                                                            const isHighlight = idx === activeIndex;
+                                                            const plnFuel = wp.rfob;
+                                                            const actFuel = parseFloat(input.fuel);
+                                                            const diff = !isNaN(actFuel) ? (actFuel - plnFuel).toFixed(1) : null;
 
-                                                        const isMlwWaypoint = idx === mlwWaypointIdx;
-                                                        const isEtops = wp.name.includes('ENTRY') || wp.name.includes('EXIT') || wp.name.includes('ETP');
+                                                            const isMlwWaypoint = idx === mlwWaypointIdx;
+                                                            const isEtops = wp.name.includes('ENTRY') || wp.name.includes('EXIT') || wp.name.includes('ETP');
 
-                                                        return (
-                                                            <tr
-                                                                key={idx}
-                                                                ref={el => { rowRefs.current[idx] = el; }}
-                                                                className={cn(
-                                                                    "transition-colors group border-l-4",
-                                                                    isHighlight ? "bg-white/10 border-aviation-accent shadow-md z-10 relative" : "border-transparent hover:bg-white/5",
-                                                                    isMlwWaypoint && !isHighlight ? "bg-aviation-warning/10" : "",
-                                                                    wp.isFir && !isHighlight ? "bg-aviation-accent/5" : ""
-                                                                )}
-                                                            >
-                                                                <td className="px-4 py-2 md:py-3 cursor-pointer" onClick={() => setActiveIndex(idx)}>
-                                                                    <div className="flex items-center gap-2">
-                                                                        {wp.isFir ? (
-                                                                            <div className="flex items-center gap-2 text-aviation-accent">
-                                                                                <MapPin className="w-3 h-3" />
-                                                                                <span className="text-[10px] md:text-xs font-bold uppercase">{wp.name}</span>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="flex items-center gap-2">
-                                                                                {isMlwWaypoint ? <Plane className="w-3 h-3 text-aviation-warning -rotate-45" /> :
-                                                                                    wp.isToc ? <CheckCircle2 className="w-3 h-3 text-aviation-success" /> : // Using success for TOC just to differ
-                                                                                        wp.isTod ? <AlertCircle className="w-3 h-3 text-aviation-warning" /> :
-                                                                                            <Navigation className="w-3 h-3 text-slate-500" />}
-                                                                                <div className="flex flex-col">
-                                                                                    <span className={cn("text-xs md:text-sm font-bold font-mono", isEtops ? "text-amber-400" : "text-white")}>{wp.name}</span>
-                                                                                    {isMlwWaypoint && (
-                                                                                        <span className="text-[8px] font-bold text-aviation-warning uppercase tracking-widest">&lt; MLW</span>
-                                                                                    )}
-                                                                                    {isEtops && (
-                                                                                        <span className="text-[8px] font-bold text-amber-500 uppercase tracking-widest">ETOPS POINT</span>
-                                                                                    )}
+                                                            return (
+                                                                <tr
+                                                                    key={idx}
+                                                                    ref={el => { rowRefs.current[idx] = el; }}
+                                                                    className={cn(
+                                                                        "transition-colors group border-l-4",
+                                                                        isHighlight ? "bg-white/10 border-aviation-accent shadow-md z-10 relative" : "border-transparent hover:bg-white/5",
+                                                                        isMlwWaypoint && !isHighlight ? "bg-aviation-warning/10" : "",
+                                                                        wp.isFir && !isHighlight ? "bg-aviation-accent/5" : ""
+                                                                    )}
+                                                                >
+                                                                    <td className="px-4 py-2 md:py-3 cursor-pointer" onClick={() => setActiveIndex(idx)}>
+                                                                        <div className="flex items-center gap-2">
+                                                                            {wp.isFir ? (
+                                                                                <div className="flex items-center gap-2 text-aviation-accent">
+                                                                                    <MapPin className="w-3 h-3" />
+                                                                                    <span className="text-[10px] md:text-xs font-bold uppercase">{wp.name}</span>
                                                                                 </div>
+                                                                            ) : (
+                                                                                <div className="flex items-center gap-2">
+                                                                                    {isMlwWaypoint ? <Plane className="w-3 h-3 text-aviation-warning -rotate-45" /> :
+                                                                                        wp.isToc ? <CheckCircle2 className="w-3 h-3 text-aviation-success" /> : // Using success for TOC just to differ
+                                                                                            wp.isTod ? <AlertCircle className="w-3 h-3 text-aviation-warning" /> :
+                                                                                                <Navigation className="w-3 h-3 text-slate-500" />}
+                                                                                    <div className="flex flex-col">
+                                                                                        <span className={cn("text-xs md:text-sm font-bold font-mono", isEtops ? "text-amber-400" : "text-white")}>{wp.name}</span>
+                                                                                        {isMlwWaypoint && (
+                                                                                            <span className="text-[8px] font-bold text-aviation-warning uppercase tracking-widest">&lt; MLW</span>
+                                                                                        )}
+                                                                                        {isEtops && (
+                                                                                            <span className="text-[8px] font-bold text-amber-500 uppercase tracking-widest">ETOPS POINT</span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-4 py-2 md:py-3">
+                                                                        <div className="flex flex-col items-start justify-center font-mono text-[10px] md:text-xs">
+                                                                            <span className="text-aviation-accent">{wp.isFir ? '-' : (wp.itt || '-')}</span>
+                                                                            {!wp.isFir && wp.dis && (
+                                                                                <span className="text-slate-500 text-[8px] md:text-[9px] mt-0.5">{wp.dis} NM</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-aviation-warning font-bold">
+                                                                        {wp.isFir ? '-' : (calculateEta(takeoffTime, wp.stm) || '-')}
+                                                                    </td>
+                                                                    <td className="px-4 py-2 md:py-3 relative group/ata">
+                                                                        {!wp.isFir && (
+                                                                            <div className="flex items-center gap-1">
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder="0000"
+                                                                                    value={input.ata}
+                                                                                    onChange={(e) => handleInputChange(idx, 'ata', e.target.value)}
+                                                                                    className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-aviation-accent w-16 focus:outline-none focus:border-aviation-accent/50 text-center"
+                                                                                />
+                                                                                {(() => {
+                                                                                    if (!input.ata || input.ata.replace(':', '').length !== 4) return null;
+                                                                                    const plnEta = calculateEta(takeoffTime, wp.stm);
+                                                                                    if (!plnEta) return null;
+                                                                                    const diff = diffMinutes(input.ata, plnEta);
+                                                                                    if (diff === 0) return null;
+                                                                                    return (
+                                                                                        <span className={cn(
+                                                                                            "text-[9px] font-mono font-bold whitespace-nowrap",
+                                                                                            diff > 0 ? "text-red-500" : "text-aviation-success"
+                                                                                        )}>
+                                                                                            {diff > 0 ? `+${diff}` : `-${Math.abs(diff)}`}
+                                                                                        </span>
+                                                                                    );
+                                                                                })()}
                                                                             </div>
                                                                         )}
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-4 py-2 md:py-3">
-                                                                    <div className="flex flex-col items-start justify-center font-mono text-[10px] md:text-xs">
-                                                                        <span className="text-aviation-accent">{wp.isFir ? '-' : (wp.itt || '-')}</span>
-                                                                        {!wp.isFir && wp.dis && (
-                                                                            <span className="text-slate-500 text-[8px] md:text-[9px] mt-0.5">{wp.dis} NM</span>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-aviation-warning font-bold">
-                                                                    {wp.isFir ? '-' : (calculateEta(takeoffTime, wp.stm) || '-')}
-                                                                </td>
-                                                                <td className="px-4 py-2 md:py-3 relative group/ata">
-                                                                    {!wp.isFir && (
-                                                                        <div className="flex items-center gap-1">
+                                                                    </td>
+                                                                    <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-slate-400">
+                                                                        {wp.isFir ? '-' : plnFuel.toFixed(1)}
+                                                                    </td>
+                                                                    <td className="px-4 py-2 md:py-3">
+                                                                        {!wp.isFir && (
                                                                             <input
-                                                                                type="text"
-                                                                                placeholder="0000"
-                                                                                value={input.ata}
-                                                                                onChange={(e) => handleInputChange(idx, 'ata', e.target.value)}
-                                                                                className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-aviation-accent w-16 focus:outline-none focus:border-aviation-accent/50 text-center"
+                                                                                type="number"
+                                                                                step="0.1"
+                                                                                placeholder="0.0"
+                                                                                value={input.fuel}
+                                                                                onChange={(e) => handleInputChange(idx, 'fuel', e.target.value)}
+                                                                                className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-white w-16 focus:outline-none focus:border-aviation-accent/50 text-right"
                                                                             />
-                                                                            {(() => {
-                                                                                if (!input.ata || input.ata.replace(':', '').length !== 4) return null;
-                                                                                const plnEta = calculateEta(takeoffTime, wp.stm);
-                                                                                if (!plnEta) return null;
-                                                                                const diff = diffMinutes(input.ata, plnEta);
-                                                                                if (diff === 0) return null;
-                                                                                return (
-                                                                                    <span className={cn(
-                                                                                        "text-[9px] font-mono font-bold whitespace-nowrap",
-                                                                                        diff > 0 ? "text-red-500" : "text-aviation-success"
-                                                                                    )}>
-                                                                                        {diff > 0 ? `+${diff}` : `-${Math.abs(diff)}`}
-                                                                                    </span>
-                                                                                );
-                                                                            })()}
-                                                                        </div>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-slate-400">
-                                                                    {wp.isFir ? '-' : plnFuel.toFixed(1)}
-                                                                </td>
-                                                                <td className="px-4 py-2 md:py-3">
-                                                                    {!wp.isFir && (
-                                                                        <input
-                                                                            type="number"
-                                                                            step="0.1"
-                                                                            placeholder="0.0"
-                                                                            value={input.fuel}
-                                                                            onChange={(e) => handleInputChange(idx, 'fuel', e.target.value)}
-                                                                            className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-white w-16 focus:outline-none focus:border-aviation-accent/50 text-right"
-                                                                        />
-                                                                    )}
-                                                                </td>
-                                                                <td className={cn(
-                                                                    "px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs font-bold",
-                                                                    diff === null ? "text-slate-500" : (parseFloat(diff) >= 0 ? "text-aviation-success" : "text-aviation-warning")
-                                                                )}>
-                                                                    {!wp.isFir ? (diff ? (parseFloat(diff) > 0 ? `+${diff}` : diff) : '-') : ''}
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2 md:gap-4 py-2 px-4 bg-white/5 border-t border-white/5 shrink-0">
-                            {(() => {
-                                const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
-                                const staFmt = flightData.sta.includes('/') ? `${staClean.substring(0, 2)}:${staClean.substring(2, 4)}` : flightData.sta;
-                                const localSta = getLocalTime(staFmt, flightData.destTimezoneOffset || '');
-                                return (
-                                    <InflightStat
-                                        label="DEST STA"
-                                        value={staFmt}
-                                        localTime={localSta}
-                                        warning
-                                    />
-                                );
-                            })()}
-                            {(() => {
-                                const eta = calculateEta(takeoffTime, flightData.tripTime);
-                                const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
-                                const delay = diffMinutes(eta || '', staClean);
-                                const localEta = getLocalTime(eta, flightData.destTimezoneOffset || '');
-                                return (
-                                    <InflightStat
-                                        label="DEST ETA"
-                                        value={eta || '-'}
-                                        localTime={localEta}
-                                        error={eta ? delay > 0 : false}
-                                        success={eta ? delay <= 0 : false}
-                                        info={eta ? (delay === 0 ? "ON TIME" : delay > 0 ? `+${delay} MIN` : `-${Math.abs(delay)} MIN`) : undefined}
-                                    />
-                                );
-                            })()}
-                            {(() => {
-                                const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
-                                const delay = diffMinutes(globalEstAta || '', staClean);
-                                const localAta = getLocalTime(globalEstAta, flightData.destTimezoneOffset || '');
-                                return (
-                                    <InflightStat
-                                        label="DEST ATA (EST)"
-                                        value={globalEstAta || '-'}
-                                        localTime={localAta}
-                                        error={globalEstAta ? delay > 0 : false}
-                                        info={globalEstAta ? (delay === 0 ? "ON TIME" : delay > 0 ? `+${delay} MIN` : `-${Math.abs(delay)} MIN`) : undefined}
-                                    />
-                                );
-                            })()}
-                        </div>
-                    </>
-                )}
-
-                {activeSubTab === 'arrival' && (
-                    <div className="flex-1 p-3 md:p-5 space-y-3 md:space-y-5 overflow-y-auto custom-scrollbar text-white">
-                        <div className="flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-aviation-accent/10 flex items-center justify-center">
-                                    <Plane className="w-3.5 h-3.5 md:w-4 md:h-4 text-aviation-accent -rotate-45" />
-                                </div>
-                                <div>
-                                    <h4 className="text-xs md:text-base font-bold">Arrival: {flightData.arrival}</h4>
-                                    <p className="text-[9px] text-slate-500 uppercase tracking-widest">Destination Airport</p>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest">STA</span>
-                                <p className="text-md md:text-lg font-mono font-bold text-aviation-warning">
-                                    {flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 md:gap-4">
-                            <div className="space-y-1 md:space-y-2">
-                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest w-48 block">Touchdown Time Z</label>
-                                <input
-                                    type="time"
-                                    value={formatTimeForInput(waypointInputs[998]?.ata || globalEstAta)}
-                                    onChange={(e) => handleInputChange(998, 'ata', e.target.value)}
-                                    className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
-                                />
-                            </div>
-                            <div className="space-y-1 md:space-y-2">
-                                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest w-48 block">Block On Time Z</label>
-                                <input
-                                    type="time"
-                                    value={formatTimeForInput(waypointInputs[999]?.ata)}
-                                    onChange={(e) => handleInputChange(999, 'ata', e.target.value)}
-                                    className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
-                                />
-                                {(() => {
-                                    const blockOn = waypointInputs[999]?.ata;
-                                    const blockOnClean = blockOn?.replace(':', '') || '';
-                                    if (blockOnClean.length !== 4) return null;
-                                    const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
-                                    const delay = diffMinutes(blockOnClean, staClean);
-                                    return (
-                                        <p className={cn("text-[10px] font-bold uppercase", delay > 0 ? "text-aviation-warning text-red-500" : "text-aviation-success")}>
-                                            {delay > 0 ? `Delay: ${delay} min` : (delay === 0 ? "Early" : `Early: ${Math.abs(delay)} min`)}
-                                        </p>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className={cn(
+                                                                        "px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs font-bold",
+                                                                        diff === null ? "text-slate-500" : (parseFloat(diff) >= 0 ? "text-aviation-success" : "text-aviation-warning")
+                                                                    )}>
+                                                                        {!wp.isFir ? (diff ? (parseFloat(diff) > 0 ? `+${diff}` : diff) : '-') : ''}
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </>
                                     );
                                 })()}
                             </div>
-                        </div>
 
-                        <div className="flex-1 space-y-1 md:space-y-2 min-h-0">
-                            <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Arrival ATIS</label>
-                            <textarea
-                                value={data.arrivalATIS || ''}
-                                onChange={(e) => setInflightData({ arrivalATIS: e.target.value })}
-                                placeholder="ATIS Info X, QNH 1010..."
-                                className="w-full flex-1 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-xs md:text-sm min-h-[80px] focus:outline-none focus:border-aviation-accent resize-none text-white"
-                            />
-                        </div>
-                    </div>
-                )
-                }
-
-                {
-                    activeSubTab === 'notes' && (
-                        <div className="flex-1 flex flex-col p-4 md:p-6 min-h-0">
-                            <textarea
-                                value={data.notes || ''}
-                                onChange={(e) => setInflightData({ notes: e.target.value })}
-                                placeholder="Jot down ATC clearances, frequencies, or temporary numbers here..."
-                                className="w-full flex-1 bg-transparent text-aviation-warning font-mono text-sm md:text-xl p-4 md:p-6 outline-none resize-none custom-scrollbar"
-                                style={{ lineHeight: '1.6' }}
-                            />
-                        </div>
+                            <div className="grid grid-cols-3 gap-2 md:gap-4 py-2 px-4 bg-white/5 border-t border-white/5 shrink-0">
+                                {(() => {
+                                    const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
+                                    const staFmt = flightData.sta.includes('/') ? `${staClean.substring(0, 2)}:${staClean.substring(2, 4)}` : flightData.sta;
+                                    const localSta = getLocalTime(staFmt, flightData.destTimezoneOffset || '');
+                                    return (
+                                        <InflightStat
+                                            label="DEST STA"
+                                            value={staFmt}
+                                            localTime={localSta}
+                                            warning
+                                        />
+                                    );
+                                })()}
+                                {(() => {
+                                    const eta = calculateEta(takeoffTime, flightData.tripTime);
+                                    const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
+                                    const delay = diffMinutes(eta || '', staClean);
+                                    const localEta = getLocalTime(eta, flightData.destTimezoneOffset || '');
+                                    return (
+                                        <InflightStat
+                                            label="DEST ETA"
+                                            value={eta || '-'}
+                                            localTime={localEta}
+                                            error={eta ? delay > 0 : false}
+                                            success={eta ? delay <= 0 : false}
+                                            info={eta ? (delay === 0 ? "ON TIME" : delay > 0 ? `+${delay} MIN` : `-${Math.abs(delay)} MIN`) : undefined}
+                                        />
+                                    );
+                                })()}
+                                {(() => {
+                                    const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
+                                    const delay = diffMinutes(globalEstAta || '', staClean);
+                                    const localAta = getLocalTime(globalEstAta, flightData.destTimezoneOffset || '');
+                                    return (
+                                        <InflightStat
+                                            label="DEST ATA (EST)"
+                                            value={globalEstAta || '-'}
+                                            localTime={localAta}
+                                            error={globalEstAta ? delay > 0 : false}
+                                            info={globalEstAta ? (delay === 0 ? "ON TIME" : delay > 0 ? `+${delay} MIN` : `-${Math.abs(delay)} MIN`) : undefined}
+                                        />
+                                    );
+                                })()}
+                            </div>
+                        </>
                     )}
+
+                    {activeSubTab === 'arrival' && (
+                        <div className="flex-1 p-3 md:p-5 space-y-3 md:space-y-5 overflow-y-auto custom-scrollbar text-white">
+                            <div className="flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-aviation-accent/10 flex items-center justify-center">
+                                        <Plane className="w-3.5 h-3.5 md:w-4 md:h-4 text-aviation-accent -rotate-45" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs md:text-base font-bold">Arrival: {flightData.arrival}</h4>
+                                        <p className="text-[9px] text-slate-500 uppercase tracking-widest">Destination Airport</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest">STA</span>
+                                    <p className="text-md md:text-lg font-mono font-bold text-aviation-warning">
+                                        {flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 md:gap-4">
+                                <div className="space-y-1 md:space-y-2">
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">Touchdown Time Z</label>
+                                    <input
+                                        type="time"
+                                        value={formatTimeForInput(waypointInputs[998]?.ata || globalEstAta)}
+                                        onChange={(e) => handleInputChange(998, 'ata', e.target.value)}
+                                        className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                    />
+                                </div>
+                                <div className="space-y-1 md:space-y-2">
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">Block On Time Z</label>
+                                    <input
+                                        type="time"
+                                        value={formatTimeForInput(waypointInputs[999]?.ata)}
+                                        onChange={(e) => handleInputChange(999, 'ata', e.target.value)}
+                                        className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                    />
+                                    {(() => {
+                                        const blockOn = waypointInputs[999]?.ata;
+                                        const blockOnClean = blockOn?.replace(':', '') || '';
+                                        if (blockOnClean.length !== 4) return null;
+                                        const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
+                                        const delay = diffMinutes(blockOnClean, staClean);
+                                        return (
+                                            <p className={cn("text-[10px] font-bold uppercase", delay > 0 ? "text-aviation-warning text-red-500" : "text-aviation-success")}>
+                                                {delay > 0 ? `Delay: ${delay} min` : (delay === 0 ? "Early" : `Early: ${Math.abs(delay)} min`)}
+                                            </p>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+
+                            <div className="flex-1 space-y-1 md:space-y-2 min-h-0">
+                                <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">Arrival ATIS</label>
+                                <textarea
+                                    value={data.arrivalATIS || ''}
+                                    onChange={(e) => setInflightData({ arrivalATIS: e.target.value })}
+                                    placeholder="ATIS Info X, QNH 1010..."
+                                    className="w-full flex-1 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-xs md:text-sm min-h-[80px] focus:outline-none focus:border-aviation-accent resize-none text-white"
+                                />
+                            </div>
+                        </div>
+                    )
+                    }
+
+                    {
+                        activeSubTab === 'notes' && (
+                            <div className="flex-1 flex flex-col p-4 md:p-6 min-h-0">
+                                <textarea
+                                    value={data.notes || ''}
+                                    onChange={(e) => setInflightData({ notes: e.target.value })}
+                                    placeholder="Jot down ATC clearances, frequencies, or temporary numbers here..."
+                                    className="w-full flex-1 bg-transparent text-aviation-warning font-mono text-sm md:text-xl p-4 md:p-6 outline-none resize-none custom-scrollbar"
+                                    style={{ lineHeight: '1.6' }}
+                                />
+                            </div>
+                        )}
+                </div>
             </div>
         </div>
     );

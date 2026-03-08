@@ -1,16 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Fuel, ArrowRightLeft, AlertTriangle, Calculator, AlertCircle } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, formatNumber } from '../lib/utils';
 import fuelDiscrepancyData from '../data/fueldiscrepancy.json';
-
-// Helper to format numbers with thin spaces for readability
-const formatNumber = (val: string | number) => {
-    const num = typeof val === 'string' ? parseInt(val) : val;
-    if (isNaN(num)) return val.toString();
-    // Using Unicode Thin Space (\u2009) for a narrower gap
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
-};
 
 // Helper to determine the applicable limit
 function getDiscrepancyLimit(aircraftType: string, fobKg: number): number {
