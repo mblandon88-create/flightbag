@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, ShieldAlert, Cpu, Rocket, BookOpen } from 'lucide-react';
+import { Info, ShieldAlert, Cpu, Rocket, BookOpen, ClipboardCopy, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const About: React.FC = () => {
@@ -50,6 +50,60 @@ export const About: React.FC = () => {
                         </div>
                     </div>
                 </motion.div>
+
+                {/* Ingestion Tools - Help for Safari */}
+                <div className="glass-panel overflow-hidden max-w-3xl ml-0 border-aviation-accent/20">
+                    <div className="px-4 py-3 md:px-6 md:py-4 bg-aviation-accent/10 border-b border-white/5 flex items-center gap-3 shrink-0">
+                        <ClipboardCopy className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
+                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Safari Ingestion Tools</h4>
+                    </div>
+                    <div className="p-4 md:p-6 space-y-6">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Share2 className="w-4 h-4 text-aviation-accent" />
+                                <h5 className="text-xs font-bold text-white uppercase">Option 1: Web Share Target</h5>
+                            </div>
+                            <p className="text-[11px] text-slate-400 leading-relaxed">
+                                You can now "Share" text or PDFs directly from Safari or Files to **eFlightBag**.
+                                Simply tap the share icon and select this app. It will automatically parse the data into Flight Init.
+                            </p>
+                        </div>
+
+                        <div className="pt-4 border-t border-white/5 space-y-3">
+                            <div className="flex items-center gap-2 mb-1">
+                                <ClipboardCopy className="w-4 h-4 text-aviation-accent" />
+                                <h5 className="text-xs font-bold text-white uppercase">Option 2: "Copy for EFB" Bookmarklet</h5>
+                            </div>
+                            <p className="text-[11px] text-slate-400 leading-relaxed">
+                                Since Safari makes it hard to "Select All", use this bookmarklet. It grabs the entire OFP with one tap.
+                            </p>
+
+                            <div className="bg-black/40 p-3 rounded-lg border border-white/10">
+                                <p className="text-[9px] text-slate-500 uppercase font-bold mb-2">How to install:</p>
+                                <ol className="text-[10px] text-slate-400 list-decimal pl-4 space-y-1">
+                                    <li>Copy the code block below.</li>
+                                    <li>Create a bookmark of ANY page in Safari.</li>
+                                    <li>Edit the bookmark, rename it to **"Copy for EFB"**, and paste the code into the URL field.</li>
+                                </ol>
+                            </div>
+
+                            <div className="relative group">
+                                <pre className="p-3 bg-aviation-bg/80 border border-white/10 rounded-lg text-[9px] font-mono text-slate-300 overflow-x-auto custom-scrollbar">
+                                    {`javascript:(function(){let t='';document.querySelectorAll('iframe').forEach(f=>{try{t+=f.contentDocument.body.innerText+'\\n'}catch(e){}});if(!t.trim())t=document.body.innerText;navigator.clipboard.writeText(t).then(()=>alert('OFP Copied! Now paste into EFB.')).catch(()=>alert('Copy failed.'))})();`}
+                                </pre>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText("javascript:(function(){let t='';document.querySelectorAll('iframe').forEach(f=>{try{t+=f.contentDocument.body.innerText+'\\n'}catch(e){}});if(!t.trim())t=document.body.innerText;navigator.clipboard.writeText(t).then(()=>alert('OFP Copied! Now paste into EFB.')).catch(()=>alert('Copy failed.'))})();");
+                                        alert('Bookmarklet code copied to clipboard!');
+                                    }}
+                                    className="absolute top-2 right-2 p-1.5 bg-aviation-accent/20 hover:bg-aviation-accent/40 rounded border border-aviation-accent/30 text-aviation-accent transition-colors"
+                                >
+                                    <ClipboardCopy size={12} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {/* App Description */}
                 <div className="glass-panel overflow-hidden max-w-3xl ml-0">

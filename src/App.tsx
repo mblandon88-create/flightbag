@@ -11,6 +11,8 @@ import { PAGuide } from './components/PAGuide'
 import { About } from './components/About'
 import type { AppSection } from './types';
 import { useStore } from './store/useStore'
+import { parseLidoText } from './utils/pdfParser'
+import { useEffect } from 'react'
 import './index.css'
 
 function App() {
