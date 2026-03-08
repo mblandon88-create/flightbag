@@ -50,7 +50,7 @@ export const FlightInit: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col gap-4 md:gap-6 min-h-0">
             <section className="shrink-0">
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-1">Flight Initialization</h3>
+                <h3 className="text-lg md:text-xl font-bold text-white mb-0.5">Flight Initialization</h3>
                 <p className="text-slate-400 text-xs md:text-sm">Load your LIDO Flight Plan to automatically initialize the EFB.</p>
             </section>
 
