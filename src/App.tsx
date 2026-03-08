@@ -5,6 +5,7 @@ import { Performance } from './components/Performance'
 import { TechLog } from './components/TechLog'
 import { DangerousGoods } from './components/DangerousGoods'
 import { InflightDisplay } from './components/InflightDisplay'
+import { ColdWeather } from './components/ColdWeather'
 import { InflightRest } from './components/InflightRest'
 import { PAGuide } from './components/PAGuide'
 import type { AppSection } from './types';
@@ -26,6 +27,7 @@ function App() {
       case 'techlog': return <TechLog />;
       case 'dangerous-goods': return <DangerousGoods />;
       case 'inflight': return <InflightDisplay />;
+      case 'cold-weather': return <ColdWeather />;
       case 'inflight-rest': return <InflightRest />;
       case 'pa-guide': return <PAGuide />;
       default: return (

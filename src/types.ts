@@ -4,7 +4,7 @@ export type AppSection =
     | 'techlog'
     | 'dangerous-goods'
     | 'inflight'
-    | 'briefing'
+    | 'cold-weather'
     | 'pa-guide'
     | 'inflight-rest'
     | 'about';

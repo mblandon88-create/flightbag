@@ -5,11 +5,11 @@ import {
     ClipboardList,
     AlertTriangle,
     Monitor,
-    BookOpen,
     Mic2,
     Bed,
     Info,
-    MapPin
+    MapPin,
+    ThermometerSnowflake
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -41,7 +41,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
         { id: 'techlog', label: 'TechLog', icon: ClipboardList },
         { id: 'dangerous-goods', label: 'DG', icon: AlertTriangle },
         { id: 'inflight', label: 'Inflight Display', icon: Monitor },
-        { id: 'briefing', label: 'Briefing', icon: BookOpen },
+        { id: 'cold-weather', label: 'Cold Wx', icon: ThermometerSnowflake },
         { id: 'pa-guide', label: 'PA Guide', icon: Mic2 },
         { id: 'inflight-rest', label: 'Inflight Rest', icon: Bed },
         { id: 'about', label: 'About', icon: Info },
