@@ -3,6 +3,7 @@ import { parseLidoPDF, parseLidoText } from '../utils/pdfParser';
 import { Upload, Loader2, CheckCircle2, Clipboard } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn, formatNumber } from '../lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
 
 export const FlightInit: React.FC = () => {
     const { flightData, setFlightData, clearFlightData } = useStore();
@@ -10,6 +11,7 @@ export const FlightInit: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isPasting, setIsPasting] = useState(false);
     const [pasteText, setPasteText] = useState('');
+    const [activeDataTab, setActiveDataTab] = useState<'general' | 'route'>('general');
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -156,40 +158,81 @@ export const FlightInit: React.FC = () => {
                             <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">Data Loaded Successfully</span>
                         </div>
 
-                        <div className="flex-1 grid grid-cols-2 gap-y-4 gap-x-8 md:gap-x-12 overflow-y-auto pr-2 custom-scrollbar">
-                            <DataField label="Flight Number" value={flightData.flightNumber} highlight />
-                            <DataField label="Route" value={`${flightData.departure} ➔ ${flightData.arrival}`} />
-                            <DataField
-                                label="STD"
-                                value={flightData.std.includes('/') ? `${flightData.std.split('/')[1].substring(0, 2)}:${flightData.std.split('/')[1].substring(2, 4)}` : flightData.std}
-                                warning
-                            />
-                            <DataField
-                                label="STA"
-                                value={flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
-                                warning
-                            />
-                            <DataField
-                                label="Block Time (BLK)"
-                                value={flightData.blkTime.length === 4 ? `${flightData.blkTime.substring(0, 2)}:${flightData.blkTime.substring(2, 4)}` : flightData.blkTime}
-                                warning
-                            />
-                            <DataField
-                                label="Trip Time"
-                                value={`${Math.floor(flightData.tripTime / 60).toString().padStart(2, '0')}:${(flightData.tripTime % 60).toString().padStart(2, '0')}`}
-                                warning
-                            />
-                            <DataField label="Trip Fuel" value={`${formatNumber(flightData.tripFuel)} kg`} />
-                            <DataField label="Ramp Fuel" value={`${formatNumber(flightData.rampFuel)} kg`} />
-                            <DataField label="MZFW" value={`${formatNumber(flightData.mzfw)} kg`} />
-                            <DataField label="MTOW" value={`${formatNumber(flightData.mtow)} kg`} />
+                        <div className="flex gap-4 mb-4 border-b border-white/5 pb-2 shrink-0">
+                            <button
+                                onClick={() => setActiveDataTab('general')}
+                                className={cn(
+                                    "text-[10px] font-bold uppercase tracking-widest pb-1 transition-all relative",
+                                    activeDataTab === 'general' ? "text-aviation-accent" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                General Info
+                                {activeDataTab === 'general' && <motion.div layoutId="initTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-aviation-accent" />}
+                            </button>
+                            <button
+                                onClick={() => setActiveDataTab('route')}
+                                className={cn(
+                                    "text-[10px] font-bold uppercase tracking-widest pb-1 transition-all relative",
+                                    activeDataTab === 'route' ? "text-aviation-accent" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                Route & FL
+                                {activeDataTab === 'route' && <motion.div layoutId="initTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-aviation-accent" />}
+                            </button>
+                        </div>
 
-                            <div className="col-span-2 pt-4 border-t border-white/5">
-                                <DataField label="Full Route String" value={flightData.route} mono />
-                            </div>
-                            <div className="col-span-2">
-                                <DataField label="Flight Level(s)" value={flightData.flightLevel} warning />
-                            </div>
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                            <AnimatePresence mode="wait">
+                                {activeDataTab === 'general' ? (
+                                    <motion.div
+                                        key="general"
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 10 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="grid grid-cols-2 gap-y-4 gap-x-8 md:gap-x-12"
+                                    >
+                                        <DataField label="Flight Number" value={flightData.flightNumber} highlight />
+                                        <DataField label="Route" value={`${flightData.departure} ➔ ${flightData.arrival}`} />
+                                        <DataField
+                                            label="STD"
+                                            value={flightData.std.includes('/') ? `${flightData.std.split('/')[1].substring(0, 2)}:${flightData.std.split('/')[1].substring(2, 4)}` : flightData.std}
+                                            warning
+                                        />
+                                        <DataField
+                                            label="STA"
+                                            value={flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
+                                            warning
+                                        />
+                                        <DataField
+                                            label="Block Time (BLK)"
+                                            value={flightData.blkTime.length === 4 ? `${flightData.blkTime.substring(0, 2)}:${flightData.blkTime.substring(2, 4)}` : flightData.blkTime}
+                                            warning
+                                        />
+                                        <DataField
+                                            label="Trip Time"
+                                            value={`${Math.floor(flightData.tripTime / 60).toString().padStart(2, '0')}:${(flightData.tripTime % 60).toString().padStart(2, '0')}`}
+                                            warning
+                                        />
+                                        <DataField label="Trip Fuel" value={`${formatNumber(flightData.tripFuel)} kg`} />
+                                        <DataField label="Ramp Fuel" value={`${formatNumber(flightData.rampFuel)} kg`} />
+                                        <DataField label="MZFW" value={`${formatNumber(flightData.mzfw)} kg`} />
+                                        <DataField label="MTOW" value={`${formatNumber(flightData.mtow)} kg`} />
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="route"
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -10 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="space-y-6"
+                                    >
+                                        <DataField label="Full Route String" value={flightData.route} mono />
+                                        <DataField label="Flight Level(s)" value={flightData.flightLevel} warning />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
                 )}

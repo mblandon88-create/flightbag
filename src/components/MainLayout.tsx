@@ -43,7 +43,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
         { id: 'performance', label: 'Performance', icon: Activity },
         { id: 'techlog', label: 'TechLog', icon: ClipboardList },
         { id: 'dangerous-goods', label: 'DG', icon: AlertTriangle },
-        { id: 'inflight', label: 'Inflight Display', icon: Monitor },
+        { id: 'inflight', label: 'Inflight', icon: Monitor },
         { id: 'cold-weather', label: 'Cold Wx', icon: ThermometerSnowflake },
         { id: 'pa-guide', label: 'PA Guide', icon: Mic2 },
         { id: 'inflight-rest', label: 'Inflight Rest', icon: Bed },
@@ -55,7 +55,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
             {/* Sidebar */}
             <aside className={cn(
                 "border-r border-white/5 bg-aviation-panel flex flex-col transition-all duration-300 shrink-0 relative",
-                isSidebarCollapsed ? "w-16" : "w-16 md:w-20 lg:w-64"
+                isSidebarCollapsed ? "w-16" : "w-16 md:w-20 lg:w-52"
             )}>
                 {/* Toggle Button */}
                 <button
@@ -65,7 +65,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
                     {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
                 </button>
 
-                <div className="p-4 lg:p-6 overflow-hidden">
+                <div className="p-4 lg:p-5 overflow-hidden">
                     <h1 className="text-xl font-bold tracking-tighter text-white flex items-center gap-2">
                         <div className="w-8 h-8 bg-aviation-accent rounded-lg flex items-center justify-center shrink-0">
                             <Plane className="w-5 h-5 text-black" />
@@ -79,7 +79,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
                     )}
                 </div>
 
-                <nav className="flex-1 px-2 lg:px-3 space-y-1 overflow-y-auto custom-scrollbar">
+                <nav className="flex-1 px-2 lg:px-2.5 space-y-1 overflow-y-auto custom-scrollbar">
                     {navItems.map((item) => (
                         <button
                             key={item.id}
@@ -107,7 +107,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
                     ))}
                 </nav>
 
-                <div className="p-4 lg:p-6 border-t border-white/5">
+                <div className="p-4 lg:p-5 border-t border-white/5">
                     <div className="flex items-center gap-3 text-slate-500">
                         <div className="w-2 h-2 rounded-full bg-aviation-success animate-pulse shrink-0" />
                         {!isSidebarCollapsed && <span className="text-[10px] font-bold uppercase tracking-widest hidden lg:inline">System Ready</span>}
@@ -118,7 +118,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-hidden">
                 {/* Top Bar */}
-                <header className="h-14 md:h-16 border-bottom border-white/5 bg-aviation-panel/50 backdrop-blur-xl flex items-center justify-between px-4 md:px-8 shrink-0 relative pt-[env(safe-area-inset-top)]">
+                <header className="h-14 md:h-16 border-bottom border-white/5 bg-aviation-panel/50 backdrop-blur-xl flex items-center justify-between px-4 md:px-8 shrink-0 relative pt-[env(safe-area-inset-top)] max-w-4xl mx-auto w-full rounded-b-xl shadow-lg">
                     <div className="flex items-center gap-2 md:gap-4 z-10 max-w-[35%]">
                         <h2 className="text-sm md:text-lg font-semibold text-white truncate max-w-[120px] md:max-w-none">
                             {navItems.find(i => i.id === activeSection)?.label}

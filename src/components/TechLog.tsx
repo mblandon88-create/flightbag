@@ -113,14 +113,14 @@ export const TechLog: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col gap-3 min-h-0">
 
-            <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0 border-t-4 border-t-aviation-accent">
-                <div className="flex-1 p-3 md:p-5 flex flex-col overflow-y-auto custom-scrollbar">
+            <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0 border-t-2 border-t-aviation-accent max-w-4xl mx-auto w-full">
+                <div className="flex-1 p-2 md:p-3 flex flex-col overflow-y-auto custom-scrollbar">
 
                     {/* 2-Column Grid filling vertical space */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 mb-2 shrink-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1.5 mb-1.5 shrink-0">
 
                         {/* Column 1: A to E */}
-                        <div className="space-y-3 flex flex-col items-center">
+                        <div className="space-y-1.5 flex flex-col items-center">
                             <InputField
                                 label="(A) REQUIRED FUEL (KG)"
                                 value={reqFuel}
@@ -156,7 +156,7 @@ export const TechLog: React.FC = () => {
                         </div>
 
                         {/* Column 2: F to I */}
-                        <div className="space-y-3 flex flex-col items-center">
+                        <div className="space-y-1.5 flex flex-col items-center">
                             <InputField
                                 label="(F) ARR FUEL (KG)"
                                 value={arrFuel}
@@ -181,7 +181,7 @@ export const TechLog: React.FC = () => {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-col items-center gap-1.5 pt-2 border-t border-white/10 mb-2 shrink-0">
+                    <div className="flex flex-col items-center gap-1 pt-1.5 border-t border-white/10 mb-1.5 shrink-0">
                         {error && (
                             <div className="flex items-center gap-2 text-aviation-warning bg-aviation-warning/10 border border-aviation-warning/30 px-3 py-1.5 rounded-lg w-full max-w-[260px] justify-center">
                                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -191,9 +191,9 @@ export const TechLog: React.FC = () => {
 
                         <button
                             onClick={handleCalculate}
-                            className="w-full max-w-[200px] h-7 md:h-8 bg-aviation-accent text-black font-bold uppercase tracking-widest text-[9px] md:text-[10px] rounded-md hover:bg-white hover:scale-[1.02] transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-aviation-accent/20"
+                            className="w-full max-w-[180px] h-6 md:h-7 bg-aviation-accent text-black font-bold uppercase tracking-widest text-[8px] md:text-[9px] rounded-md hover:bg-white hover:scale-[1.02] transition-all flex items-center justify-center gap-1 shadow-lg shadow-aviation-accent/20"
                         >
-                            <Calculator className="w-3.5 h-3.5" />
+                            <Calculator className="w-3 h-3" />
                             Calculate
                         </button>
                     </div>
@@ -202,10 +202,10 @@ export const TechLog: React.FC = () => {
                     {discrepancy !== null && (
                         <div className="flex justify-center w-full shrink-0">
                             <div className={cn(
-                                "flex flex-col items-center justify-center p-2 w-full max-w-[260px] rounded-lg border-2 transition-all animate-in fade-in zoom-in duration-300",
+                                "flex flex-col items-center justify-center p-1.5 w-full max-w-[240px] rounded-lg border-2 transition-all animate-in fade-in zoom-in duration-300",
                                 Math.abs(discrepancy) > applicableLimit
-                                    ? "bg-aviation-warning/10 border-aviation-warning/40 shadow-[0_0_15px_rgba(239,68,68,0.15)]"
-                                    : "bg-aviation-success/10 border-aviation-success/40 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+                                    ? "bg-aviation-warning/10 border-aviation-warning/30 shadow-[0_0_10px_rgba(239,68,68,0.1)]"
+                                    : "bg-aviation-success/10 border-aviation-success/30 shadow-[0_0_10px_rgba(34,197,94,0.08)]"
                             )}>
                                 <div className="flex flex-col items-center justify-center w-full">
                                     <div className="flex items-center justify-between w-full">
@@ -218,17 +218,17 @@ export const TechLog: React.FC = () => {
                                         </span>
                                     </div>
                                     <span className={cn(
-                                        "text-lg md:text-xl font-mono font-black tracking-tighter leading-none mt-1",
+                                        "text-base md:text-lg font-mono font-black tracking-tighter leading-none mt-0.5",
                                         Math.abs(discrepancy) > applicableLimit ? "text-aviation-warning" : "text-aviation-success"
                                     )}>
                                         {discrepancy > 0 ? '+' : ''}{formatNumber(Math.abs(discrepancy))} kg
                                     </span>
                                 </div>
                                 <div className={cn(
-                                    "flex items-center gap-1.5 mt-1.5 px-2 py-0.5 rounded-sm border",
+                                    "flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-sm border",
                                     Math.abs(discrepancy) > applicableLimit
-                                        ? "text-aviation-warning bg-aviation-warning/20 border-aviation-warning/30"
-                                        : "text-slate-400 bg-white/5 border-white/10"
+                                        ? "text-aviation-warning bg-aviation-warning/20 border-aviation-warning/20"
+                                        : "text-slate-400 bg-white/5 border-white/5"
                                 )}>
                                     {Math.abs(discrepancy) > applicableLimit && <AlertTriangle className="w-2.5 h-2.5" />}
                                     <span className="text-[6px] md:text-[7px] font-bold uppercase tracking-widest">
@@ -259,7 +259,7 @@ function InputField({ label, value, onChange, placeholder = "ENTER VALUE" }: { l
                 value={displayValue}
                 onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
                 placeholder={placeholder}
-                className="w-full bg-transparent px-2 py-1.5 text-sm md:text-base font-mono font-bold text-white placeholder:text-slate-700 focus:outline-none"
+                className="w-full bg-transparent px-2 py-1 text-xs md:text-sm font-mono font-bold text-white placeholder:text-slate-700 focus:outline-none"
             />
         </div>
     );
@@ -272,7 +272,7 @@ function CalculatedField({ label, formula, value }: { label: string, formula: st
                 <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</label>
                 <span className="text-[8px] md:text-[9px] font-mono text-slate-600 tracking-widest">{formula}</span>
             </div>
-            <div className="px-2 py-1.5 text-sm md:text-base font-mono font-bold text-aviation-accent/80">
+            <div className="px-2 py-1 text-xs md:text-sm font-mono font-bold text-aviation-accent/80">
                 {value !== null ? formatNumber(value) : <span className="text-slate-700">-</span>}
             </div>
         </div>

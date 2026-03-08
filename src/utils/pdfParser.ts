@@ -203,7 +203,7 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
 
     return {
         flightNumber: extractRegex(fullText, /(QTR\d+[A-Z]?)\/QR\d+/i) || extractRegex(fullText, /COPY\s+(QR\d+)/i) || 'Unknown',
-        aircraftType: extractRegex(fullText, /(?:OTHH|DOH)\s*\/\s*[A-Z]{4}\s+(?![PMZ]\d{4})\s*([A-Z\d]{4})/)
+        aircraftType: extractRegex(fullText, /[A-Z]{4}\s*\/\s*[A-Z]{4}\s+(?![PMZ]\d{4})\s*([A-Z\d]{4})/)
             || extractRegex(fullText, /(?:TYPE|A\/C TYPE)\s*[:]?\s*(A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)/i)
             || extractRegex(fullText, /A\/C\s.*?(A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)/i) || 'Unknown',
         departure,
