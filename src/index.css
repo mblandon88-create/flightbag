@@ -23,20 +23,20 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-aviation-glass backdrop-blur-md border border-aviation-border rounded-xl;
+    @apply bg-aviation-glass backdrop-blur-md border border-aviation-border rounded-xl p-3 md:p-4;
   }
 
   .data-label {
-    @apply text-[10px] uppercase tracking-wider text-slate-500 font-semibold;
+    @apply text-[9px] md:text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-0.5;
   }
 
   .data-value {
-    @apply font-mono text-sm text-slate-200;
+    @apply font-mono text-xs md:text-sm text-slate-200;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 3px;
+    height: 3px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
