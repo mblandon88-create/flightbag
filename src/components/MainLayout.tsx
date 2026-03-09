@@ -23,9 +23,11 @@ interface MainLayoutProps {
     onSectionChange: (section: AppSection) => void;
     route?: string;
     flightNumber?: string;
+    aircraftType?: string;
+    registration?: string;
 }
 
-export function MainLayout({ children, activeSection, onSectionChange, route = 'EFB DASHBOARD', flightNumber }: MainLayoutProps) {
+export function MainLayout({ children, activeSection, onSectionChange, route = 'EFB DASHBOARD', flightNumber, aircraftType, registration }: MainLayoutProps) {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -131,9 +133,17 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
                     </div>
 
                     {flightNumber && activeSection !== 'flight-init' && (
-                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 flex">
-                            <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">Flight</span>
-                            <span className="text-base md:text-xl font-mono font-bold text-aviation-success drop-shadow-md leading-none">{flightNumber}</span>
+                        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none z-10 flex text-center">
+                            <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">Flight info</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-base md:text-xl font-mono font-bold text-aviation-success drop-shadow-md leading-none">{flightNumber}</span>
+                                {(aircraftType || registration) && (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded-md border border-white/5">
+                                        <span className="text-[10px] md:text-xs font-mono font-bold text-aviation-accent">{aircraftType}</span>
+                                        {registration && <span className="text-[9px] md:text-[11px] font-mono text-slate-400 font-medium">{registration}</span>}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 

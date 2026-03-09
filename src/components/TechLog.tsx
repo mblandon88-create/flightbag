@@ -53,7 +53,7 @@ export const TechLog: React.FC = () => {
             if (!reqFuel) setReqFuel(ramp);
             if (!depFuel) setDepFuel(ramp);
         }
-    }, [flightData]);
+    }, [flightData, depFuel, reqFuel, setDepFuel, setReqFuel]);
 
 
 

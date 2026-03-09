@@ -57,7 +57,7 @@ export function ColdWeather() {
         setFixes(fixes.map(f => {
             if (f.id === id) {
                 if (field === 'isFAF' && value === true) return { ...f, isFAF: true, minimaType: 'NONE' };
-                if (field === 'minimaType' && value !== 'NONE') return { ...f, minimaType: value as any, isFAF: false };
+                if (field === 'minimaType' && value !== 'NONE') return { ...f, minimaType: value as FixEntry['minimaType'], isFAF: false };
                 return { ...f, [field]: value };
             }
             if (field === 'isFAF' && value === true) return { ...f, isFAF: false };

@@ -39,7 +39,15 @@ export const InflightRest: React.FC = () => {
     useEffect(() => {
         if (!flightData || !inflightData.takeoffTime) return;
 
-        let { startTime, endTime } = restData;
+        const currentRestData = inflightData.restData || {
+            crewSize: '4',
+            pattern: 'Half and Half',
+            startTime: '',
+            endTime: '',
+            buffer: 5
+        };
+
+        let { startTime, endTime } = currentRestData;
         let needsUpdate = false;
 
         if (!startTime) {
@@ -62,9 +70,9 @@ export const InflightRest: React.FC = () => {
         }
 
         if (needsUpdate) {
-            setInflightData({ restData: { ...restData, startTime, endTime } });
+            setInflightData({ restData: { ...currentRestData, startTime, endTime } });
         }
-    }, [flightData, inflightData.takeoffTime, restData.startTime, restData.endTime]);
+    }, [flightData, inflightData.takeoffTime, inflightData.restData, setInflightData]);
 
     const updateRestData = (updates: Partial<RestData>) => {
         setInflightData({
@@ -275,7 +283,7 @@ export const InflightRest: React.FC = () => {
                                 onChange={(e) => {
                                     const val = e.target.value;
                                     if (val === '') {
-                                        updateRestData({ buffer: '' as any }); // Temporarily allow empty string for typing
+                                        updateRestData({ buffer: 0 }); // Default to 0
                                     } else {
                                         updateRestData({ buffer: parseInt(val, 10) });
                                     }

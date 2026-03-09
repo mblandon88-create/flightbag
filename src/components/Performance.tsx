@@ -22,21 +22,26 @@ export const Performance: React.FC = () => {
 
     const taxi = parseInt(flightData.taxiFuel) || 0;
     const trip = parseInt(flightData.tripFuel) || 0;
-    const cont = parseInt(flightData.contingencyFuel) || 0;
-    const alt = parseInt(flightData.altFuel) || 0;
-    const finl = parseInt(flightData.finResFuel) || 0;
-    const extra = parseInt(flightData.extraFuel) || 0;
-    const picd = parseInt(flightData.picFuel) || 0;
 
-    const plannedRampFuel = taxi + trip + cont + alt + finl + extra + picd;
+
+    // Use raw values for precise internal calculations to avoid "double rounding"
+    const rawRampFuel = parseInt(flightData.rawRampFuel) || 0;
+    const rawEzfw = parseInt(flightData.rawEzfw) || 0;
+
+    // Displayed "Planned" values (already rounded in store)
+    const plannedRampFuel = parseInt(flightData.rampFuel) || 0;
+    const plannedEtow = parseInt(flightData.etow) || 0;
 
     // Tactical Actuals
-    const actualRampFuel = inflightData.revisedRampFuel ? parseInt(inflightData.revisedRampFuel) : plannedRampFuel;
-    const actualEzfw = inflightData.revisedEzfw ? parseInt(inflightData.revisedEzfw) : ezfw;
+    const actualRampFuel = inflightData.revisedRampFuel ? parseInt(inflightData.revisedRampFuel) : rawRampFuel;
+    const actualEzfw = inflightData.revisedEzfw ? parseInt(inflightData.revisedEzfw) : rawEzfw;
 
-    const plannedEtow = ezfw + plannedRampFuel - taxi;
-    const rTOW = actualEzfw + actualRampFuel - taxi;
-    const eLW = rTOW - trip;
+    // Helper to round up to nearest 100 kg
+    const roundUp100 = (num: number) => Math.ceil(num / 100) * 100;
+
+    // Calculate RTOW and ELW with conservative rounding (Sum raw, then round once)
+    const rTOW = roundUp100(actualEzfw + actualRampFuel - taxi);
+    const eLW = roundUp100(rTOW - trip);
 
     // Decision Support: Max Allowable Fuel
     const maxFuelMtow = mtow - actualEzfw + taxi;

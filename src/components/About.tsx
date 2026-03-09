@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, ShieldAlert, Cpu, Rocket, BookOpen, ClipboardCopy, Share2 } from 'lucide-react';
+import { Info, ShieldAlert, Cpu, Rocket, BookOpen, ClipboardCopy, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const About: React.FC = () => {
@@ -16,6 +16,8 @@ export const About: React.FC = () => {
         { title: 'Title Standardization', status: 'Planned', desc: 'Syncing all component titles to a unified aviation standard.' },
         { title: 'PDF Integration', status: 'Researching', desc: 'Enhanced data extraction from LIDO flight plans.' },
     ];
+
+    const bookmarkletCode = "javascript:(function(){let t='';document.querySelectorAll('iframe').forEach(f=>{try{t+=f.contentDocument.body.innerText+'\\n'}catch(e){}});if(!t.trim())t=document.body.innerText;navigator.clipboard.writeText(t).then(()=>alert('OFP Copied! Now paste into EFB.')).catch(()=>alert('Copy failed.'))})();";
 
     return (
         <div className="h-full flex flex-col pt-4 overflow-hidden">
@@ -51,54 +53,83 @@ export const About: React.FC = () => {
                     </div>
                 </motion.div>
 
+                {/* Data Precision & Safety */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                    className="glass-panel p-4 md:p-6 border-aviation-warning/30 bg-aviation-warning/5 max-w-3xl ml-0"
+                >
+                    <div className="flex items-start gap-4">
+                        <div className="bg-aviation-warning/20 p-2 rounded-lg shrink-0">
+                            <ShieldAlert className="w-6 h-6 text-aviation-warning" />
+                        </div>
+                        <div>
+                            <h4 className="text-aviation-warning font-bold uppercase tracking-wider text-sm mb-1">Data Precision & Safety</h4>
+                            <p className="text-slate-200 font-bold text-sm md:text-base leading-tight">
+                                Conservative Calculation Model
+                            </p>
+                            <p className="text-slate-400 text-xs mt-2 leading-relaxed">
+                                To ensure a safe operational margin, <strong className="text-aviation-warning">Ramp Fuel</strong> and all <strong className="text-aviation-warning">Weights</strong> (MTOW, MZFW, EZFW, etc.) are always rounded <strong className="text-aviation-warning">UP</strong> to the nearest 100kg. Individual fuel components like Trip Fuel remain precise for accurate monitoring.
+                            </p>
+                        </div>
+                    </div>
+                </motion.div>
+
                 {/* Ingestion Tools - Help for Safari */}
                 <div className="glass-panel overflow-hidden max-w-3xl ml-0 border-aviation-accent/20">
                     <div className="px-4 py-3 md:px-6 md:py-4 bg-aviation-accent/10 border-b border-white/5 flex items-center gap-3 shrink-0">
                         <ClipboardCopy className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
-                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Safari Ingestion Tools</h4>
+                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Safari Ingestion Masterclass</h4>
                     </div>
                     <div className="p-4 md:p-6 space-y-6">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Share2 className="w-4 h-4 text-aviation-accent" />
-                                <h5 className="text-xs font-bold text-white uppercase">Option 1: Web Share Target</h5>
-                            </div>
+                        <div className="space-y-4">
+                            <h5 className="text-sm font-bold text-white uppercase flex items-center gap-2">
+                                <Star className="w-4 h-4 text-aviation-warning" />
+                                The "Copy for EFB" Bookmarklet
+                            </h5>
                             <p className="text-[11px] text-slate-400 leading-relaxed">
-                                You can now "Share" text or PDFs directly from Safari or Files to **eFlightBag**.
-                                Simply tap the share icon and select this app. It will automatically parse the data into Flight Init.
-                            </p>
-                        </div>
-
-                        <div className="pt-4 border-t border-white/5 space-y-3">
-                            <div className="flex items-center gap-2 mb-1">
-                                <ClipboardCopy className="w-4 h-4 text-aviation-accent" />
-                                <h5 className="text-xs font-bold text-white uppercase">Option 2: "Copy for EFB" Bookmarklet</h5>
-                            </div>
-                            <p className="text-[11px] text-slate-400 leading-relaxed">
-                                Since Safari makes it hard to "Select All", use this bookmarklet. It grabs the entire OFP with one tap.
+                                Since Safari on iPad restricts "Select All" on the Lido portal, we use a **Bookmarklet**.
+                                This is a specialized bookmark that runs a script to grab your flight plan instantly.
                             </p>
 
-                            <div className="bg-black/40 p-3 rounded-lg border border-white/10">
-                                <p className="text-[9px] text-slate-500 uppercase font-bold mb-2">How to install:</p>
-                                <ol className="text-[10px] text-slate-400 list-decimal pl-4 space-y-1">
-                                    <li>Copy the code block below.</li>
-                                    <li>Create a bookmark of ANY page in Safari.</li>
-                                    <li>Edit the bookmark, rename it to **"Copy for EFB"**, and paste the code into the URL field.</li>
-                                </ol>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-5 h-5 rounded-full bg-aviation-accent/20 flex items-center justify-center text-[10px] font-bold text-aviation-accent">1</div>
+                                        <h6 className="text-[10px] font-bold text-slate-300 uppercase">Save a Bookmark</h6>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 leading-tight">Open any page in Safari (like Google) and tap the <strong>Share</strong> icon, then <strong>Add Bookmark</strong>.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-5 h-5 rounded-full bg-aviation-accent/20 flex items-center justify-center text-[10px] font-bold text-aviation-accent">2</div>
+                                        <h6 className="text-[10px] font-bold text-slate-300 uppercase">Edit & Paste code</h6>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 leading-tight">Open your bookmarks, tap <strong>Edit</strong>, change the name to <strong>Copy for EFB</strong>, and paste the code below into the URL field.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-5 h-5 rounded-full bg-aviation-accent/20 flex items-center justify-center text-[10px] font-bold text-aviation-accent">3</div>
+                                        <h6 className="text-[10px] font-bold text-slate-300 uppercase">Use at Lido</h6>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 leading-tight">On the Lido flight plan page, simply open your bookmarks and tap <strong>Copy for EFB</strong>. Done!</p>
+                                </div>
                             </div>
 
                             <div className="relative group">
-                                <pre className="p-3 bg-aviation-bg/80 border border-white/10 rounded-lg text-[9px] font-mono text-slate-300 overflow-x-auto custom-scrollbar">
-                                    {`javascript:(function(){let t='';document.querySelectorAll('iframe').forEach(f=>{try{t+=f.contentDocument.body.innerText+'\\n'}catch(e){}});if(!t.trim())t=document.body.innerText;navigator.clipboard.writeText(t).then(()=>alert('OFP Copied! Now paste into EFB.')).catch(()=>alert('Copy failed.'))})();`}
-                                </pre>
+                                <div className="bg-black/40 p-4 rounded-lg border border-white/10 font-mono text-[10px] text-aviation-accent break-all leading-tight">
+                                    {bookmarkletCode}
+                                </div>
                                 <button
                                     onClick={() => {
-                                        navigator.clipboard.writeText("javascript:(function(){let t='';document.querySelectorAll('iframe').forEach(f=>{try{t+=f.contentDocument.body.innerText+'\\n'}catch(e){}});if(!t.trim())t=document.body.innerText;navigator.clipboard.writeText(t).then(()=>alert('OFP Copied! Now paste into EFB.')).catch(()=>alert('Copy failed.'))})();");
+                                        navigator.clipboard.writeText(bookmarkletCode);
                                         alert('Bookmarklet code copied to clipboard!');
                                     }}
-                                    className="absolute top-2 right-2 p-1.5 bg-aviation-accent/20 hover:bg-aviation-accent/40 rounded border border-aviation-accent/30 text-aviation-accent transition-colors"
+                                    className="absolute top-2 right-2 p-2 bg-aviation-accent/20 hover:bg-aviation-accent/40 rounded border border-aviation-accent/30 text-aviation-accent transition-colors flex items-center gap-2"
                                 >
-                                    <ClipboardCopy size={12} />
+                                    <ClipboardCopy size={14} />
+                                    <span className="text-[10px] font-bold uppercase tracking-widest">Copy Code</span>
                                 </button>
                             </div>
                         </div>

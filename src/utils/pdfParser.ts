@@ -15,11 +15,13 @@ export interface WaypointEntry {
     isFir: boolean;     // true if this is a FIR/UIR boundary separator row
     itt?: string;       // Initial True Track (or Magnetic Track)
     dis?: string;       // Leg Distance (NM)
+    procedure?: string; // Optional SID/STAR name (e.g. "DEGES3W")
 }
 
 export interface ParsedFlightData {
     flightNumber: string;
     aircraftType: string;
+    registration: string;
     departure: string;
     arrival: string;
     destTimezoneOffset: string; // e.g. "M0500", "P0300", "Z0000"
@@ -37,8 +39,10 @@ export interface ParsedFlightData {
     mtow: string;
     mzfw: string;
     ezfw: string;
+    rawEzfw: string; // Unrounded value for precise downstream calculations
     etow: string;
     mlw: string;
+    rawRampFuel: string; // Unrounded value for precise downstream calculations
     route: string;
     flightLevel: string;
     // Block Times
@@ -59,11 +63,27 @@ export interface ParsedFlightData {
     waypoints: string[];
 }
 
-const round100 = (val: string | null): string => {
+const round100 = (val: string | number | null): string => {
+    if (!val || val === '....') {
+        console.log(`[round100] Input: "${val}" -> Returning "0"`);
+        return '0';
+    }
+    const cleanStr = val.toString().replace(/[^\d]/g, '');
+    const num = parseInt(cleanStr, 10);
+    if (isNaN(num)) {
+        console.log(`[round100] Input: "${val}" (Clean: "${cleanStr}") -> NaN -> Returning "0"`);
+        return '0';
+    }
+    const result = (Math.ceil(num / 100) * 100).toString();
+    console.log(`[round100] Input: "${val}" -> Numeric: ${num} -> Output: "${result}"`);
+    return result;
+};
+
+const parseNum = (val: string | null): string => {
     if (!val) return '0';
     const num = parseInt(val, 10);
     if (isNaN(num)) return '0';
-    return (Math.round(num / 100) * 100).toString();
+    return num.toString();
 };
 
 export const parseLidoPDF = async (file: File): Promise<ParsedFlightData> => {
@@ -99,8 +119,7 @@ export const parseLidoPDF = async (file: File): Promise<ParsedFlightData> => {
 };
 
 export const parseLidoText = (fullText: string): ParsedFlightData => {
-    // IMPROVED ICAO EXTRACTION: Look for [A-Z]{4}/[A-Z]{4} patterns flexibly
-    // Specifically look for the DOH-ISB or OTHH/OPIS patterns
+    // IMPROVED ICAO EXTRACTION: Use word boundaries cautiously to support single-line PDF text
     const icaoPairMatch = fullText.match(/([A-Z]{4})\s*\/\s*([A-Z]{4})/)
         || fullText.match(/([A-Z]{3,4})-([A-Z]{3,4})\s+Reg/);
 
@@ -109,12 +128,11 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
 
     if (icaoPairMatch) {
         departure = icaoPairMatch[1].length === 3 ? `O${icaoPairMatch[1]}` : icaoPairMatch[1];
-        arrival = icaoPairMatch[2].length === 3 ? `O${icaoPairMatch[1]}` : icaoPairMatch[2];
+        arrival = icaoPairMatch[2].length === 3 ? `O${icaoPairMatch[2]}` : icaoPairMatch[2];
     } else {
         departure = extractRegex(fullText, /([A-Z]{4})\/[A-Z]{4}\s+A\d{2}[A-Z]{1}/i) || 'Unknown';
         arrival = extractRegex(fullText, /[A-Z]{4}\/([A-Z]{4})\s+A\d{2}[A-Z]{1}/i) || 'Unknown';
     }
-
 
     // The main route extraction
     const fullRouteString = extractRoute(fullText) || 'Not Found';
@@ -127,63 +145,88 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
         route = fullRouteString.replace(flMatch[1], '').trim();
     }
 
+    // Ensure we handle multiline dots and clean up the route
+    route = route.replace(/\.+/g, '').trim();
+
     const tripDataMatch = fullText.match(/TRIP\s+(\d+)\s+(\d{4})/i);
-    const tripFuelStr = tripDataMatch ? round100(tripDataMatch[1]) : round100(extractRegex(fullText, /TRIP\s+(\d+)/i));
+    const tripFuelStr = tripDataMatch ? parseNum(tripDataMatch[1]) : parseNum(extractRegex(fullText, /TRIP\s+(\d{3,})(?:\s+|\.)/i));
     const tripTimeRaw = tripDataMatch ? tripDataMatch[2] : '0000';
     const tripTimeMinutes = parseInt(tripTimeRaw.substring(0, 2), 10) * 60 + parseInt(tripTimeRaw.substring(2, 4), 10);
 
-    const taxiMatch = fullText.match(/TAXI\s+(\d+)(?:\s+(\d{4}))?/i);
-    const taxiFuelStr = round100(taxiMatch ? taxiMatch[1] : extractRegex(fullText, /TAXI\s+(\d+)/i));
+    const taxiMatch = fullText.match(/TAXI\s+(\d+)\s+(\d{4})/i);
+    const taxiFuelStr = parseNum(taxiMatch ? taxiMatch[1] : extractRegex(fullText, /TAXI\s+(\d+)(?:\s+|\.)/i));
     const taxiTimeRaw = taxiMatch?.[2] || '0000';
     const taxiTimeMinutes = parseInt(taxiTimeRaw.substring(0, 2), 10) * 60 + parseInt(taxiTimeRaw.substring(2, 4), 10);
 
-    const contMatch = fullText.match(/CONT\s+(.*?)\s+(\d+)(?:\s+(\d{4}))?/i);
-    const contingencyRemarks = contMatch ? contMatch[1].trim() : '';
-    const contingencyFuelStr = round100(contMatch ? contMatch[2] : (extractRegex(fullText, /CONT.*?\s+(\d+)/i)));
-    const contTimeRaw = contMatch?.[3] || '0000';
-    const contTimeMinutes = parseInt(contTimeRaw.substring(0, 2), 10) * 60 + parseInt(contTimeRaw.substring(2, 4), 10);
+    // Look for FUEL followed by TIME (digits or dots) to avoid labels like 3P/C
+    const contMatch = fullText.match(/CONT.*?\s+(\d+)\s+(\d{4}|\.\.\.\.)/i);
+    const contingencyRemarks = extractRegex(fullText, /CONT\s+(.*?)\s+\d+/i) || '';
+    const contingencyFuelStr = parseNum(contMatch ? contMatch[1] : (extractRegex(fullText, /CONT.*?\s+(\d{3,})\b/i)));
+    const contTimeRaw = contMatch?.[2] || '0000';
+    const contTimeMinutes = (contTimeRaw !== '....') ? (parseInt(contTimeRaw.substring(0, 2), 10) * 60 + parseInt(contTimeRaw.substring(2, 4), 10)) : 0;
 
-    const altMatch = fullText.match(/ALTN?\s+(?:[A-Z]+\s+)?(\d+)(?:\s+(\d{4}))?/i);
-    const altFuelStr = round100(altMatch ? altMatch[1] : extractRegex(fullText, /ALTN?\s+(?:[A-Z]+\s+)?(\d+)/i));
+    const altMatch = fullText.match(/ALTN?\s+(?:[A-Z]+\s+)?(\d+)\s+(\d{4})/i);
+    const altFuelStr = parseNum(altMatch ? altMatch[1] : extractRegex(fullText, /ALTN?\s+(?:[A-Z]+\s+)?(\d+)(?:\s+|\.)/i));
     const altTimeRaw = altMatch?.[2] || '0000';
-    const altTimeMinutes = parseInt(altTimeRaw.substring(0, 2), 10) * 60 + parseInt(altTimeRaw.substring(2, 4), 10);
+    const altTimeMinutes = altTimeRaw !== '....' ? (parseInt(altTimeRaw.substring(0, 2), 10) * 60 + parseInt(altTimeRaw.substring(2, 4), 10)) : 0;
 
-    const finlMatch = fullText.match(/FIN(?:L|AL|RES)?\s+(\d+)(?:\s+(\d{4}))?/i);
-    const finResFuelStr = round100(finlMatch ? finlMatch[1] : extractRegex(fullText, /FIN(?:L|AL|RES)?\s+(\d+)/i));
+    const finlMatch = fullText.match(/FIN(?:L|AL|RES)?\s+(\d+)\s+(\d{4})/i);
+    const finResFuelStr = parseNum(finlMatch ? finlMatch[1] : extractRegex(fullText, /FIN(?:L|AL|RES)?\s+(\d+)(?:\s+|\.)/i));
     const finlTimeRaw = finlMatch?.[2] || '0000';
-    const finlTimeMinutes = parseInt(finlTimeRaw.substring(0, 2), 10) * 60 + parseInt(finlTimeRaw.substring(2, 4), 10);
+    const finlTimeMinutes = finlTimeRaw !== '....' ? (parseInt(finlTimeRaw.substring(0, 2), 10) * 60 + parseInt(finlTimeRaw.substring(2, 4), 10)) : 0;
 
-    const extraMatch = fullText.match(/EXTRA\s+(?:[A-Z]\s+)?(\d+)(?:\s+(\d{4}))?/i);
-    const extraFuelStr = round100(extraMatch ? extraMatch[1] : extractRegex(fullText, /EXTRA\s+(?:[A-Z]\s+)?(\d+)/i));
+    const extraMatch = fullText.match(/EXTRA\s+(?:[A-Z]\s+)?(\d+)\s+(\d{4})/i);
+    const extraFuelStr = parseNum(extraMatch ? extraMatch[1] : extractRegex(fullText, /EXTRA\s+(?:[A-Z]\s+)?(\d+)(?:\s+|\.)/i));
     const extraTimeRaw = extraMatch?.[2] || '0000';
-    const extraTimeMinutes = parseInt(extraTimeRaw.substring(0, 2), 10) * 60 + parseInt(extraTimeRaw.substring(2, 4), 10);
+    const extraTimeMinutes = extraTimeRaw !== '....' ? (parseInt(extraTimeRaw.substring(0, 2), 10) * 60 + parseInt(extraTimeRaw.substring(2, 4), 10)) : 0;
 
-    const minReqMatch = fullText.match(/MIN.*?(?:T\/O|REQ|FUEL)\s+(\d+)(?:\s+(\d{4}))?/i);
-    const minReqFuelStr = round100(minReqMatch ? minReqMatch[1] : extractRegex(fullText, /MIN.*?(?:T\/O|REQ|FUEL)\s+(\d+)/i));
+    const minReqMatch = fullText.match(/MIN.*?(?:T\/O|REQ|FUEL)\s+(\d+)\s+(\d{4})/i);
+    const minReqFuelStr = parseNum(minReqMatch ? minReqMatch[1] : extractRegex(fullText, /MIN.*?(?:T\/O|REQ|FUEL)\s+(\d+)(?:\s+|\.)/i));
     const minReqTimeRaw = minReqMatch?.[2] || '0000';
-    const minReqTimeMinutes = parseInt(minReqTimeRaw.substring(0, 2), 10) * 60 + parseInt(minReqTimeRaw.substring(2, 4), 10);
+    const minReqTimeMinutes = minReqTimeRaw !== '....' ? (parseInt(minReqTimeRaw.substring(0, 2), 10) * 60 + parseInt(minReqTimeRaw.substring(2, 4), 10)) : 0;
 
-    const picFuelStr = round100(extractRegex(fullText, /PIC(?:D|.*?EXT(?:RA)?)?\s+(\d+)/i));
+    const picFuelStrRaw = extractRegex(fullText, /PIC(?:D|.*?EXT(?:RA)?)?\s+(\d+)(?:\s+|\.)/i) || '0';
+    const picFuelStr = parseNum(picFuelStrRaw);
 
-    const calculatedRampFuel = (
+    const calculatedRampFuelVal =
         parseInt(taxiFuelStr) +
         parseInt(tripFuelStr) +
         parseInt(contingencyFuelStr) +
         parseInt(altFuelStr) +
         parseInt(finResFuelStr) +
         parseInt(extraFuelStr) +
-        parseInt(picFuelStr)
-    ).toString();
+        parseInt(picFuelStr);
 
-    const weightMatch = fullText.match(/MZFW\s+(\d+)\s+EZFW\s+(\d+)/i);
-    const mzfwStr = weightMatch ? weightMatch[1] : (extractRegex(fullText, /MZFW\s+(\d+)/i) || '0');
-    const ezfwStr = weightMatch ? weightMatch[2] : (extractRegex(fullText, /EZFW\s+(\d+)/i) || '0');
-    const mtowStr = extractRegex(fullText, /MTOW\s+(\d+)/i) || '0';
-    const etowStr = extractRegex(fullText, /ETOW\s+(\d+)/i) || (parseInt(ezfwStr) + parseInt(calculatedRampFuel) - parseInt(taxiFuelStr)).toString();
-    const mlwStr = extractRegex(fullText, /MLWT?\s+(\d+)/i) || extractRegex(fullText, /LAW\s+(\d+)/i) || '0';
+    // THE CRITICAL FIX: Ensure the fallback sum is also rounded!
+    const calculatedRampFuelRounded = round100(calculatedRampFuelVal.toString());
+
+    const weightMatch = fullText.match(/MZFW\s+(\d+)\s+EZFW\s+(\d+)/i) || fullText.match(/MZFW\s+(\d+).*?EZFW\s+(\d+)/is);
+    const mzfwStr = round100(weightMatch ? weightMatch[1] : (extractRegex(fullText, /MZFW\s+(\d+)/i) || '0'));
+    const ezfwStr = round100(weightMatch ? weightMatch[2] : (extractRegex(fullText, /EZFW\s+(\d+)/i) || '0'));
+    const mtowStr = round100(extractRegex(fullText, /MTOW\s+(\d+)/i) || '0');
+
+    // ETOW calculation: if not found, it must be (EZFW + Ramp Fuel - Taxi) -> must be rounded
+    const etowRegexMatch = extractRegex(fullText, /ETOW\s+(\d+)/i);
+    const etowStr = etowRegexMatch ? round100(etowRegexMatch) : round100((parseInt(ezfwStr) + parseInt(calculatedRampFuelRounded) - parseInt(taxiFuelStr)).toString());
+
+    const mlwStr = round100(extractRegex(fullText, /MLWT?\s+(\d+)/i) || extractRegex(fullText, /LAW\s+(\d+)/i) || '0');
+
+    const rampRegex = /RAMP(?:\s*FUEL)?\s+(\d+)/gi;
+    const rampMatches: string[] = [];
+    let rMatch;
+    while ((rMatch = rampRegex.exec(fullText)) !== null) {
+        rampMatches.push(rMatch[1]);
+    }
+    // Main table ramp fuel vs fallback
+    const bestRampMatch = rampMatches.length > 0 ? round100(rampMatches[0]) : calculatedRampFuelRounded;
+
+    const registration = extractRegex(fullText, /REG(?:\s*[:])?\s*([A-Z0-9]{1,2}-[A-Z0-9]{3,5}|A7[A-Z]{3})/i)
+        || extractRegex(fullText, /([A-Z0-9]{1,2}-[A-Z0-9]{3,5})\s+Reg/i)
+        || extractRegex(fullText, /\s(?:A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)\s+(A7[A-Z]{3})\b/i)
+        || 'Unknown';
 
     // Extract structured nav log entries, stopping at arrival ICAO
-    const waypointEntries = extractNavLog(fullText, arrival);
+    const waypointEntries = extractNavLog(fullText, arrival, registration);
 
 
     const waypoints = waypointEntries
@@ -203,14 +246,16 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
 
     return {
         flightNumber: extractRegex(fullText, /(QTR\d+[A-Z]?)\/QR\d+/i) || extractRegex(fullText, /COPY\s+(QR\d+)/i) || 'Unknown',
-        aircraftType: extractRegex(fullText, /[A-Z]{4}\s*\/\s*[A-Z]{4}\s+(?![PMZ]\d{4})\s*([A-Z\d]{4})/)
+        aircraftType: extractRegex(fullText, /(?:[A-Z]{4}\s*\/\s*[A-Z]{4}|A\/C)\s+(?:[PMZ]\d{4}\s+)?([A-Z\d]{4})/)
             || extractRegex(fullText, /(?:TYPE|A\/C TYPE)\s*[:]?\s*(A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)/i)
             || extractRegex(fullText, /A\/C\s.*?(A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)/i) || 'Unknown',
+        registration,
         departure,
         arrival,
         destTimezoneOffset,
         tripFuel: tripFuelStr,
-        rampFuel: calculatedRampFuel,
+        rampFuel: bestRampMatch, // Already rounded
+        rawRampFuel: (rampMatches.length > 0 ? rampMatches[0] : calculatedRampFuelVal.toString()),
         taxiFuel: taxiFuelStr,
         contingencyFuel: contingencyFuelStr,
         contingencyRemarks: contingencyRemarks,
@@ -219,11 +264,12 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
         minReqFuel: minReqFuelStr,
         extraFuel: extraFuelStr,
         picFuel: picFuelStr,
-        mzfw: round100(mzfwStr),
-        ezfw: round100(ezfwStr),
-        mtow: round100(mtowStr),
-        etow: round100(etowStr),
-        mlw: round100(mlwStr),
+        mzfw: mzfwStr,
+        ezfw: ezfwStr,
+        rawEzfw: (weightMatch ? weightMatch[2] : (extractRegex(fullText, /EZFW\s+(\d+)/i) || '0')),
+        mtow: mtowStr,
+        etow: etowStr,
+        mlw: mlwStr,
         route: route || 'Not Found',
         flightLevel: flightLevel,
         std: extractRegex(fullText, /STD\s+([\d/]+)/i) || 'Unknown',
@@ -250,9 +296,31 @@ const extractRegex = (text: string, regex: RegExp): string | null => {
 /**
  * Enhanced Structural Nav Log Parser inspired by rriet/flightbag.
  */
-function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
+/**
+ * Ultimate structural parser using a two-pass approach:
+ * 1. Extract official whitelist from "LAT/LONG WAYPT" section.
+ * 2. Parse Nav Log using whitelist + Start Signatures.
+ */
+function extractNavLog(fullText: string, arrivalICAO: string, registration: string): WaypointEntry[] {
     const entries: WaypointEntry[] = [];
 
+    // PASS 1: Build Whitelist from the official coordinate table
+    const whitelist = new Set<string>();
+    const wlIdx = fullText.toUpperCase().search(/LAT\/LONG\s+WAYPT/);
+    if (wlIdx !== -1) {
+        const wlSection = fullText.substring(wlIdx, wlIdx + 15000); // Usually long
+        const coordRegex = /[NS]\d{2,4}(?:\.\d)?\/[EW]\d{3,5}(?:\.\d)?/g;
+        let m;
+        while ((m = coordRegex.exec(wlSection)) !== null) {
+            const after = wlSection.substring(m.index + m[0].length).trim();
+            const firstWord = after.split(/\s+/)[0].toUpperCase();
+            if (/^[A-Z0-9]{2,10}$/.test(firstWord)) {
+                whitelist.add(firstWord);
+            }
+        }
+    }
+
+    // PASS 2: Parse Nav Log
     const headerIdx = fullText.search(/AWY\s+ITT\s+FL\s+WIND/);
     if (headerIdx === -1) return entries;
 
@@ -261,26 +329,19 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
 
     const tokens = navLogText.split(/\s+/).filter(t => t.length > 0);
 
-    const IS_WAYPOINT_RE = /^(?=.*[A-Z])([A-Z0-9]{2,5}|TOC|TOD)$/;
-    const IS_COORD_PATTERN = /^[NS]{1}\d{2,5}[EW][0-9.]{4,6}$/;
-    const IS_ETOPS_PATTERN = /^((ENTRY)[0-9]|(ETP\([0-9A-Z]{1,4}\))|(EXIT)[0-9])$/;
+    const IS_WAYPOINT_RE = /^(?=.*[A-Z])([A-Z0-9/]{2,10}|TOC|TOD)$/;
+    const IS_COORD_PATTERN = /^[NS]\d{2,5}(?:\.\d)?[EW]\d{2,6}(?:\.\d)?$/;
 
-    const IS_AIRWAY = /^[A-Z]{1,2}\d{1,3}$/;
-    const IS_LIDO_DOTS = /^[.]{1,4}$/;
-    const IS_RFOB = /^(\d{1,3}\.\d)$/; // Broadened to handle > 100t or small < 1t values
+    const IS_RFOB = /^(\d{1,4}\.\d)$/;
     const IS_CTM = /^\d{4}$/;
     const IS_FIR_DASHES = /^-{3,}$/;
-
-    const IS_DATE = /^[0-9]{1,2}[A-Z]{3}$/i;
-    const IS_MACH_COMP = /^[PM][0-9]{4}$/i;
-    const IS_AC_TYPE = /^(A\d{3}[A-Z]?|B\d{3}[A-Z]?)$/i;
-    const IS_AC_REG = /^[A-Z0-9]{1,2}-[A-Z0-9]{3,5}$|^A7[A-Z]{3}$/i;
     const IS_ALT_UNIT = /^[0-9]+(FT|KT|M|Z|MSL)$/i;
+    const IS_ITT = /^([TM]?\d{3})$/;
 
     const FIR_DESIGNATORS = new Set(Object.values(FIR_DATA).map(v => v.toUpperCase()));
     const KNOWN_HEADERS = new Set([
         'AWY', 'ITT', 'FL', 'WIND', 'ISAD', 'STM', 'ETA', 'AFOB',
-        'WPT', 'FREQ', 'IMT', 'DIS', 'SPD', 'GS', 'TAS', 'MORA',
+        'WPT', 'FREQ', 'IMT', 'DIS', 'SPD', 'GS', 'TAS', 'MORA', 'GS/TAS', 'WPT/FREQ',
         'CTM', 'RTA', 'ATA', 'RFOB', 'PAGE', 'PLAN', 'REM', 'REQ',
         'CLB', 'DSC', 'ELEV', 'DESC', 'FUEL', 'TIME', 'DIST', 'MACH',
         'TCAS', 'ADF', 'VOR', 'VHF', 'HF', 'NAV', 'LOG', 'OFF', 'ON', 'OUT', 'IN', 'DATE',
@@ -289,35 +350,23 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
 
     const IS_STRUCTURAL_WPT = (t: string) => {
         const up = t.toUpperCase();
-        if (KNOWN_HEADERS.has(up) || up === 'DCT' || up === 'NRP' || IS_AIRWAY.test(up)) return false;
-        if (IS_DATE.test(up) || IS_MACH_COMP.test(up) || IS_AC_TYPE.test(up) || IS_AC_REG.test(up) || IS_ALT_UNIT.test(up)) return false;
-
+        if (KNOWN_HEADERS.has(up) || up === 'DCT' || up === 'NRP' || IS_ALT_UNIT.test(up) || up === '....') return false;
         if (FIR_DESIGNATORS.has(up)) return false;
         if (Object.keys(FIR_DATA).some(name => up === name)) return false;
-
-        return IS_WAYPOINT_RE.test(up) || IS_COORD_PATTERN.test(up) || IS_ETOPS_PATTERN.test(up);
+        return IS_WAYPOINT_RE.test(up) || IS_COORD_PATTERN.test(up);
     };
-
-    const isFirKeyword = (t: string) => t && /^\(?(FIR|UIR|FIR\/UIR)\)?$/.test(t.toUpperCase());
-    const isLidoMarkerRow = (startIndex: number) => {
-        for (let k = 1; k < 15; k++) {
-            const peek = tokens[startIndex + k];
-            if (!peek) break;
-            if (IS_LIDO_DOTS.test(peek)) return true;
-        }
-        return false;
-    };
-
-    const IS_ITT = /^([TM]?\d{3})$/;
 
     let i = 0;
+    let pendingProcedure = '';
+    let lastAttachedProcedure = '';
+    const regClean = registration.toUpperCase().replace('-', '');
     const arrivalMatch = new RegExp('^' + arrivalICAO + '(/\\d+[A-Z]?)?$');
 
     while (i < tokens.length) {
         const tok = tokens[i];
         const tokUp = tok.toUpperCase();
 
-        // 0. Stop condition: Arrival Airport Identifier
+        // Stop condition: Arrival Airport Identifier
         if (tokUp.length >= 4 && arrivalMatch.test(tokUp)) {
             let rfobVal = 0;
             for (let j = i + 1; j < Math.min(i + 25, tokens.length); j++) {
@@ -326,81 +375,97 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
                     break;
                 }
             }
-            entries.push({ name: tokUp, stm: 0, rfob: rfobVal, isToc: false, isTod: false, isFir: false });
+            entries.push({
+                name: tokUp,
+                stm: 0,
+                rfob: rfobVal,
+                isToc: false,
+                isTod: false,
+                isFir: false,
+                procedure: pendingProcedure
+            });
+            pendingProcedure = '';
             break;
         }
 
-        // 1. FIR Logic (Separator Rows)
+        // FIR Logic
         const matchedByName = Object.keys(FIR_DATA).find(f => tokUp === f || (tokUp + ' ' + (tokens[i + 1] || '').toUpperCase()) === f);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const matchedByDesignator = Object.entries(FIR_DATA).find(([_, des]) => tokUp === des)?.[0];
-        const knownFir = matchedByName || matchedByDesignator;
+        const knownFir = matchedByName || Object.entries(FIR_DATA).find(([, des]) => tokUp === des)?.[0];
 
         if (IS_FIR_DASHES.test(tok) || knownFir) {
-            let foundKeyword = false;
             let fullName = '';
-            let skipCount = 0;
-
             for (let k = 0; k <= 4; k++) {
                 const peek = tokens[i + k];
-                if (!peek) break;
-                if (isFirKeyword(peek)) {
-                    foundKeyword = true;
+                if (peek && /^\(?(FIR|UIR|FIR\/UIR)\)?$/.test(peek.toUpperCase())) {
                     const nameBase = knownFir ? knownFir : tokens.slice(i + 1, i + k).join(' ');
                     const icao = FIR_DATA[nameBase.toUpperCase().trim()] || (tokens[i + k + 1]?.length === 4 ? tokens[i + k + 1] : '');
                     fullName = `${nameBase.trim()} FIR (${icao})`;
-                    skipCount = k + (icao && tokens[i + k + 1] === icao ? 1 : 0);
+                    i += k + (icao && tokens[i + k + 1] === icao ? 1 : 0);
                     break;
                 }
             }
-
-            if (foundKeyword || knownFir) {
-                if (!fullName && knownFir) {
-                    fullName = `${knownFir} FIR (${FIR_DATA[knownFir]})`;
-                }
-                if (fullName) {
-                    entries.push({ name: fullName, stm: 0, rfob: 0, isToc: false, isTod: false, isFir: true });
-                    i += Math.max(1, skipCount + 1);
-                    continue;
-                }
+            if (fullName) {
+                entries.push({ name: fullName, stm: 0, rfob: 0, isToc: false, isTod: false, isFir: true });
+                i++; continue;
             }
         }
 
-        // 2. Structural Waypoint Parsing
+        // Waypoint Logic
         if (IS_STRUCTURAL_WPT(tok)) {
-            if (isLidoMarkerRow(i)) {
-                const name = tokUp;
-                const isToc = name === 'TOC';
-                const isTod = name === 'TOD';
-                let ctmRaw = '';
-                let rfobRaw = '';
-                let stmMinutes = 0;
-                let ittRaw = '';
-                let disRaw = '';
+            let hasOwnTimeOrFuel = false;
+            let hasStartPattern = false;
+            let ctmRaw = '', rfobRaw = '', ittRaw = '', disRaw = '';
 
-                for (let j = i + 1; j < Math.min(i + 25, tokens.length); j++) {
-                    const t = tokens[j].toUpperCase();
-                    if (IS_STRUCTURAL_WPT(t)) break;
+            for (let j = i + 1; j < Math.min(i + 20, tokens.length); j++) {
+                const t = tokens[j].toUpperCase();
+                if (IS_RFOB.test(t)) rfobRaw = t;
+                if (IS_CTM.test(t)) ctmRaw = t;
+                if (rfobRaw || ctmRaw) hasOwnTimeOrFuel = true;
+                if (!ittRaw && IS_ITT.test(t)) ittRaw = t.replace(/[TM]/, '');
+                else if (!disRaw && /^\d{1,4}$/.test(t) && !IS_CTM.test(t)) disRaw = t;
 
-                    // Look for ITT, which is usually a 3-digit number (e.g. 338 or T338 or M338) near the airway/waypoint
-                    // To avoid confusing it with flight levels or weights, we do this before parsing.
-                    if (!ittRaw && IS_ITT.test(t)) {
-                        ittRaw = t.replace(/[TM]/, '');
-                    } else if (!disRaw && /^\d{1,4}$/.test(t) && !IS_CTM.test(t)) {
-                        disRaw = t;
+                if (j <= i + 4 && IS_ITT.test(t) && tokens[j + 1]?.toUpperCase() === '....') hasStartPattern = true;
+                if ((IS_STRUCTURAL_WPT(t) && t !== '....' && t !== 'TOC' && t !== 'TOD') || KNOWN_HEADERS.has(t)) break;
+            }
+
+            // FILTER: Whitelist OR Special Signature OR Marker
+            const isWhitelisted = whitelist.has(tokUp) || whitelist.has(tokUp.split('/')[0]);
+            if (hasOwnTimeOrFuel || hasStartPattern || tokUp === 'TOC' || tokUp === 'TOD') {
+                if (IS_COORD_PATTERN.test(tokUp)) {
+                    // Coordinate: Always skip adding to entries, acts as stop condition only
+                } else if (isWhitelisted || hasStartPattern || tokUp === 'TOC' || tokUp === 'TOD') {
+                    const procToAttach = (pendingProcedure && pendingProcedure !== lastAttachedProcedure) ? pendingProcedure : undefined;
+                    if (ctmRaw) {
+                        const hh = parseInt(ctmRaw.substring(0, 2), 10), mm = parseInt(ctmRaw.substring(2, 4), 10);
+                        entries.push({
+                            name: tokUp,
+                            stm: hh * 60 + mm,
+                            rfob: rfobRaw ? parseFloat(rfobRaw) : 0,
+                            isToc: tokUp === 'TOC', isTod: tokUp === 'TOD', isFir: false,
+                            itt: ittRaw || '-', dis: disRaw || '-',
+                            procedure: procToAttach
+                        });
+                        if (procToAttach) lastAttachedProcedure = procToAttach;
+                        pendingProcedure = ''; // Clear after attaching
+                    } else if (hasStartPattern) {
+                        entries.push({
+                            name: tokUp, stm: 0, rfob: 0,
+                            isToc: false, isTod: false, isFir: false,
+                            itt: ittRaw || '-', dis: disRaw || '-',
+                            procedure: procToAttach
+                        });
+                        if (procToAttach) lastAttachedProcedure = procToAttach;
+                        pendingProcedure = ''; // Clear after attaching
                     }
-
-                    if (IS_RFOB.test(t)) rfobRaw = t;
-                    if (IS_CTM.test(t) && !ctmRaw) ctmRaw = t;
                 }
-
-                if (ctmRaw) {
-                    const hh = parseInt(ctmRaw.substring(0, 2), 10);
-                    const mm = parseInt(ctmRaw.substring(2, 4), 10);
-                    stmMinutes = hh * 60 + mm;
+            } else if (!isWhitelisted && !IS_COORD_PATTERN.test(tokUp)) {
+                // If it's building up to a waypoint and looks like a procedure (not a header)
+                // Procedure names often have letters ending in a digit and optional letter (e.g. DEGES3W, KUPRO2E)
+                // We also strictly exclude the aircraft registration to prevent leakage
+                const isReg = tokUp === regClean || tokUp.replace('-', '') === regClean;
+                if (!isReg && tokUp.length >= 5 && /[A-Z]{2,}\d[A-Z]?$/.test(tokUp)) {
+                    pendingProcedure = tokUp;
                 }
-
-                entries.push({ name, stm: stmMinutes, rfob: rfobRaw ? parseFloat(rfobRaw) : 0, isToc, isTod, isFir: false, itt: ittRaw || '-', dis: disRaw || '-' });
             }
         }
         i++;
@@ -409,7 +474,8 @@ function extractNavLog(fullText: string, arrivalICAO: string): WaypointEntry[] {
 }
 
 const extractRoute = (text: string): string | null => {
-    const match = text.match(/ATC\s*CLEARANCE:.*?([A-Z0-9\-\s/]+FL\d+.*?)(?=FUEL|\n\n)/is)
+    // PDF text often lacks newlines, so we use \\s+ instead of \\n\\s*
+    const match = text.match(/(?:ATC\s*CLEARANCE|DEFRTE):[\s.]*([\s\S]+?)(?=\s+(?:FUEL|AWY|ITT|PAGE|MZFW|MTOW|RAMP|TRIP|$))/i)
         || text.match(/AWY.*?WPT.*?AFOB\s+([A-Z0-9\-\s]{10,})/is); // Fallback to nav log header area
     if (match) {
         return match[1].replace(/\s+/g, ' ').trim();

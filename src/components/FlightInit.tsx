@@ -9,8 +9,6 @@ export const FlightInit: React.FC = () => {
     const { flightData, setFlightData, clearFlightData } = useStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isPasting, setIsPasting] = useState(false);
-    const [pasteText, setPasteText] = useState('');
     const [activeDataTab, setActiveDataTab] = useState<'general' | 'route'>('general');
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,21 +29,36 @@ export const FlightInit: React.FC = () => {
         }
     };
 
-    const handlePasteSubmit = () => {
-        if (!pasteText.trim()) return;
+    const handlePasteSubmit = (text: string) => {
+        if (!text.trim()) {
+            setError('Clipboard is empty. Please copy the LIDO text first.');
+            return;
+        }
         setLoading(true);
         setError(null);
         clearFlightData();
         try {
-            const parsed = parseLidoText(pasteText);
+            const parsed = parseLidoText(text);
             setFlightData(parsed);
-            setIsPasting(false);
-            setPasteText('');
         } catch (err) {
             console.error(err);
             setError('Failed to parse text. Ensure you copied the entire LIDO flight plan.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handlePasteFromClipboard = async () => {
+        setError(null);
+        try {
+            if (!navigator.clipboard || !navigator.clipboard.readText) {
+                throw new Error('Clipboard API not available');
+            }
+            const text = await navigator.clipboard.readText();
+            handlePasteSubmit(text);
+        } catch (err) {
+            console.error(err);
+            setError('Unable to access clipboard. Please ensure the app has permission and you are using a secure connection (HTTPS or localhost).');
         }
     };
 
@@ -64,14 +77,14 @@ export const FlightInit: React.FC = () => {
                         onClick={() => document.getElementById('pdf-upload')?.click()}
                     >
                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-aviation-accent/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                            {loading && !isPasting ? (
+                            {loading ? (
                                 <Loader2 className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent animate-spin" />
                             ) : (
                                 <Upload className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
                             )}
                         </div>
                         <span className="text-xs font-semibold text-white">
-                            {loading && !isPasting ? 'Parsing...' : 'Upload LIDO PDF'}
+                            {loading ? 'Parsing...' : 'Upload LIDO PDF'}
                         </span>
                         <span className="text-[9px] text-slate-500 mt-1">Drag and drop or click</span>
                         <input
@@ -86,7 +99,7 @@ export const FlightInit: React.FC = () => {
                     {/* Paste Card */}
                     <div
                         className="glass-panel p-4 flex flex-col items-center justify-center border-dashed border-2 border-white/10 hover:border-aviation-accent/50 transition-colors cursor-pointer group shrink-0"
-                        onClick={() => setIsPasting(true)}
+                        onClick={handlePasteFromClipboard}
                     >
                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-aviation-accent/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                             <Clipboard className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
@@ -94,7 +107,7 @@ export const FlightInit: React.FC = () => {
                         <span className="text-xs font-semibold text-white">
                             Paste LIDO Text
                         </span>
-                        <span className="text-[9px] text-slate-500 mt-1">Copy everything and paste</span>
+                        <span className="text-[9px] text-slate-500 mt-1">Copy everything and click</span>
                     </div>
 
                     {error && <p className="text-aviation-warning text-[10px] mt-2 text-center">{error}</p>}
@@ -108,47 +121,6 @@ export const FlightInit: React.FC = () => {
                         </button>
                     )}
                 </div>
-
-                {/* Paste Modal */}
-                {isPasting && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="glass-panel w-full max-w-2xl p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-lg font-bold text-white uppercase tracking-wider">Paste Flight Plan Text</h4>
-                                <button
-                                    onClick={() => setIsPasting(false)}
-                                    className="text-slate-400 hover:text-white transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                            <p className="text-xs text-slate-400">Paste the entire text content of your LIDO flight plan below.</p>
-                            <textarea
-                                className="flex-1 min-h-[300px] bg-aviation-bg/60 border border-white/10 rounded-lg p-4 font-mono text-xs text-slate-300 focus:outline-none focus:border-aviation-accent custom-scrollbar resize-none"
-                                placeholder="Paste LIDO text here..."
-                                value={pasteText}
-                                onChange={(e) => setPasteText(e.target.value)}
-                                autoFocus
-                            />
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => setIsPasting(false)}
-                                    className="flex-1 py-3 border border-white/10 text-white font-bold uppercase tracking-widest rounded-lg hover:bg-white/5 transition-all"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handlePasteSubmit}
-                                    disabled={!pasteText.trim() || loading}
-                                    className="flex-[2] py-3 bg-aviation-accent text-black font-bold uppercase tracking-widest rounded-lg hover:bg-aviation-accent/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                                    {loading ? 'Parsing...' : 'Parse Flight Plan'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* Data Display */}
                 {flightData && (
@@ -190,18 +162,17 @@ export const FlightInit: React.FC = () => {
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: 10 }}
                                         transition={{ duration: 0.15 }}
-                                        className="grid grid-cols-2 gap-y-4 gap-x-8 md:gap-x-12"
+                                        className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-32 w-max"
                                     >
+                                        {/* ROW 1: Flight, Route, A/C */}
                                         <DataField label="Flight Number" value={flightData.flightNumber} highlight />
                                         <DataField label="Route" value={`${flightData.departure} ➔ ${flightData.arrival}`} />
+                                        <DataField label="A/C Type & Reg" value={`${flightData.aircraftType} (${flightData.registration})`} />
+
+                                        {/* ROW 2: STD, Block, STA */}
                                         <DataField
                                             label="STD"
                                             value={flightData.std.includes('/') ? `${flightData.std.split('/')[1].substring(0, 2)}:${flightData.std.split('/')[1].substring(2, 4)}` : flightData.std}
-                                            warning
-                                        />
-                                        <DataField
-                                            label="STA"
-                                            value={flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
                                             warning
                                         />
                                         <DataField
@@ -210,14 +181,28 @@ export const FlightInit: React.FC = () => {
                                             warning
                                         />
                                         <DataField
+                                            label="STA"
+                                            value={flightData.sta.includes('/') ? `${flightData.sta.split('/')[1].substring(0, 2)}:${flightData.sta.split('/')[1].substring(2, 4)}` : flightData.sta}
+                                            warning
+                                        />
+
+                                        {/* ROW 3: Trip Time, Trip Fuel, Ramp Fuel */}
+                                        <DataField
                                             label="Trip Time"
                                             value={`${Math.floor(flightData.tripTime / 60).toString().padStart(2, '0')}:${(flightData.tripTime % 60).toString().padStart(2, '0')}`}
-                                            warning
                                         />
                                         <DataField label="Trip Fuel" value={`${formatNumber(flightData.tripFuel)} kg`} />
                                         <DataField label="Ramp Fuel" value={`${formatNumber(flightData.rampFuel)} kg`} />
+
+                                        {/* ROW 4: EZFW, ETOW */}
+                                        <DataField label="EZFW" value={`${formatNumber(flightData.ezfw)} kg`} warning />
+                                        <DataField label="ETOW" value={`${formatNumber(flightData.etow)} kg`} warning />
+                                        <div className="hidden md:block" /> {/* Column Spacer */}
+
+                                        {/* ROW 5: MZFW, MTOW */}
                                         <DataField label="MZFW" value={`${formatNumber(flightData.mzfw)} kg`} />
                                         <DataField label="MTOW" value={`${formatNumber(flightData.mtow)} kg`} />
+                                        <div className="hidden md:block" /> {/* Column Spacer */}
                                     </motion.div>
                                 ) : (
                                     <motion.div
@@ -243,10 +228,10 @@ export const FlightInit: React.FC = () => {
 
 function DataField({ label, value, highlight, warning, mono }: { label: string, value: string, highlight?: boolean, warning?: boolean, mono?: boolean }) {
     return (
-        <div className="space-y-1">
-            <span className="data-label text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{label}</span>
+        <div className="flex flex-col">
+            <span className="data-label text-[9px] uppercase tracking-tighter text-slate-500 font-bold mb-0">{label}</span>
             <p className={cn(
-                "text-sm font-medium",
+                "text-sm font-medium leading-tight",
                 mono ? "font-mono" : "font-sans",
                 highlight ? "text-aviation-accent font-bold" : "text-slate-200",
                 warning ? "text-aviation-warning font-bold" : ""

@@ -36,12 +36,22 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
     const [takeoffTime, setTakeoffTime] = useState<string>(
         inflightData?.takeoffTime || ''
     );
-    const tacticalRampFuel = (inflightData?.revisedRampFuel || flightData?.rampFuel || '0');
+    const tacticalRampFuel = (inflightData?.revisedRampFuel || flightData?.rawRampFuel || '0');
     const taxiFuel = flightData?.taxiFuel || '0';
-    const tacticalAtf = (parseInt(tacticalRampFuel) - parseInt(taxiFuel)).toString();
-    const actualEzfw = (inflightData?.revisedEzfw || flightData?.ezfw || '0');
-    const tacticalAtow = (parseInt(actualEzfw) + parseInt(tacticalAtf)).toString();
 
+    // Helper to round up to nearest 100 kg
+    const roundUp100 = (num: number) => Math.ceil(num / 100) * 100;
+
+    // Tactical atf (Actual Takeoff Fuel) = (Revised Ramp OR Raw Ramp) - Taxi (Rounded up)
+    const tacticalAtfVal = parseInt(tacticalRampFuel) - parseInt(taxiFuel);
+    const tacticalAtf = roundUp100(tacticalAtfVal).toString();
+
+    const actualEzfw = (inflightData?.revisedEzfw || flightData?.rawEzfw || '0');
+
+    // Tactical atow (Actual Takeoff Weight) = (Revised EZFW OR Raw EZFW) + Tactical ATF (Rounded up)
+    // Note: tacticalAtf is already rounded, but we round the final sum again for safety
+    const tacticalAtowVal = parseInt(actualEzfw) + (parseInt(tacticalRampFuel) - parseInt(taxiFuel));
+    const tacticalAtow = roundUp100(tacticalAtowVal).toString();
     const [atow, setAtow] = useState<string>(
         inflightData?.atow || tacticalAtow
     );
@@ -427,10 +437,14 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
 
                                 {(() => {
                                     if (!flightData) return null;
-                                    const actualTF = parseFloat(atf) || Number(flightData.rampFuel);
                                     const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
                                     const actualTOW = isOverMTOW ? Number(flightData.etow) : (parseFloat(atow) || Number(flightData.mtow));
                                     const mlw = Number(flightData.mlw) || 0;
+
+                                    // To calculate fuel burn correctly, we need the planned fuel at the start of the nav log
+                                    // as a reference. This handles Lido plans where RFOB column might exclude extra fuel.
+                                    const firstWpWithFuel = waypointEntries.find(wp => !wp.isFir && wp.rfob > 0);
+                                    const startRfob = firstWpWithFuel ? firstWpWithFuel.rfob : 0;
 
                                     let mlwWaypointIdx = -1;
                                     let hideBanner = false;
@@ -439,9 +453,11 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                             hideBanner = true;
                                         } else {
                                             for (let i = 0; i < waypointEntries.length; i++) {
-                                                if (waypointEntries[i].isFir) continue;
-                                                const burnedFuel = actualTF - (Number(waypointEntries[i].rfob) * 1000);
-                                                const estWeight = actualTOW - burnedFuel;
+                                                if (waypointEntries[i].isFir || waypointEntries[i].rfob === 0) continue;
+
+                                                const plannedBurn = (startRfob - waypointEntries[i].rfob) * 1000;
+                                                const estWeight = actualTOW - plannedBurn;
+
                                                 if (estWeight <= mlw) {
                                                     mlwWaypointIdx = i;
                                                     const mlwWpEta = calculateEta(takeoffTime, waypointEntries[i].stm);
@@ -500,12 +516,16 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                         {waypointEntries.map((wp, idx) => {
                                                             const input = waypointInputs[idx] || { ata: '', fuel: '' };
                                                             const isHighlight = idx === activeIndex;
-                                                            const plnFuel = wp.rfob;
-                                                            const actFuel = parseFloat(input.fuel);
-                                                            const diff = !isNaN(actFuel) ? (actFuel - plnFuel).toFixed(1) : null;
-
                                                             const isMlwWaypoint = idx === mlwWaypointIdx;
                                                             const isEtops = wp.name.includes('ENTRY') || wp.name.includes('EXIT') || wp.name.includes('ETP');
+
+                                                            // Calculate discrepancy relative to ACTUAL fuel at takeoff
+                                                            const actualTakeoffFuel = parseFloat(atf) || Number(flightData.rampFuel);
+                                                            const plannedBurnAtWp = startRfob > 0 && wp.rfob > 0 ? (startRfob - wp.rfob) * 1000 : 0;
+                                                            const expectedFuel = (actualTakeoffFuel - plannedBurnAtWp) / 1000;
+
+                                                            const actFuel = parseFloat(input.fuel);
+                                                            const diff = !isNaN(actFuel) ? (actFuel - expectedFuel).toFixed(1) : null;
 
                                                             return (
                                                                 <tr
@@ -532,6 +552,11 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                                                             wp.isTod ? <AlertCircle className="w-3 h-3 text-aviation-warning" /> :
                                                                                                 <Navigation className="w-3 h-3 text-slate-500" />}
                                                                                     <div className="flex flex-col">
+                                                                                        {wp.procedure && (
+                                                                                            <span className="text-[9px] font-bold text-aviation-accent uppercase tracking-tighter leading-none mb-0.5">
+                                                                                                {wp.procedure}
+                                                                                            </span>
+                                                                                        )}
                                                                                         <span className={cn("text-xs md:text-sm font-bold font-mono", isEtops ? "text-amber-400" : "text-white")}>{wp.name}</span>
                                                                                         {isMlwWaypoint && (
                                                                                             <span className="text-[8px] font-bold text-aviation-warning uppercase tracking-widest">&lt; MLW</span>
@@ -584,7 +609,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                                         )}
                                                                     </td>
                                                                     <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-slate-400">
-                                                                        {wp.isFir ? '-' : plnFuel.toFixed(1)}
+                                                                        {wp.isFir ? '-' : wp.rfob.toFixed(1)}
                                                                     </td>
                                                                     <td className="px-4 py-2 md:py-3">
                                                                         {!wp.isFir && (

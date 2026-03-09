@@ -1,0 +1,20 @@
+﻿
+> eflightbag@0.0.0 lint
+> eslint .
+
+
+C:\Users\Marco\Flightbag\src\components\ColdWeather.tsx
+  60:101  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\Marco\Flightbag\src\components\InflightRest.tsx
+   67:8   warning  React Hook useEffect has missing dependencies: 'restData' and 'setInflightData'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  278:72  error    Unexpected any. Specify a different type                                                                                             @typescript-eslint/no-explicit-any
+
+C:\Users\Marco\Flightbag\src\components\TechLog.tsx
+  56:8  warning  React Hook useEffect has missing dependencies: 'depFuel', 'reqFuel', 'setDepFuel', and 'setReqFuel'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Marco\Flightbag\src\utils\pdfParser.ts
+  393:75  error  '_' is defined but never used  @typescript-eslint/no-unused-vars
+
+Γ£û 5 problems (3 errors, 2 warnings)
+
