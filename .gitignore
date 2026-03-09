@@ -26,3 +26,11 @@ dist-ssr
 # Ignore PDFs
 *.pdf
 src/lido/
+
+# Ignore generated reports and logs
+*.log
+*.txt
+lint_results*.json
+dist/
+node_modules/
+.DS_Store
