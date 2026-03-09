@@ -119,8 +119,15 @@ export const parseLidoPDF = async (file: File): Promise<ParsedFlightData> => {
 };
 
 export const parseLidoText = (fullText: string): ParsedFlightData => {
-    // IMPROVED ICAO EXTRACTION: Use word boundaries cautiously to support single-line PDF text
-    const icaoPairMatch = fullText.match(/([A-Z]{4})\s*\/\s*([A-Z]{4})/)
+    // IMPROVED ICAO EXTRACTION:
+    // Priority 1: Match from known LIDO header lines like "STATION COPY QR3257 09MAR OOMS/OTHH"
+    //             or PAGE headers like "PAGE 1/7 QTR3257/QR3257 09MAR P0400 OOMS/OTHH"
+    //             These always contain the correct departure/arrival pair.
+    // Priority 2: General fallback using word boundaries to avoid substring matches
+    //             like "LERT/BULL" inside "ALERT/BULLETIN" from web UI nav text.
+    const icaoPairMatch =
+        fullText.match(/(?:STATION COPY|PAGE\s+\d+\/\d+)\s+\S+\s+\d+[A-Z]+\s+(?:[PMZ]\d{4}\s+)?([A-Z]{4})\s*\/\s*([A-Z]{4})/i)
+        || fullText.match(/\b([A-Z]{4})\/([A-Z]{4})\b/)
         || fullText.match(/([A-Z]{3,4})-([A-Z]{3,4})\s+Reg/);
 
     let departure = 'Unknown';
@@ -146,7 +153,7 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
     }
 
     // Ensure we handle multiline dots and clean up the route
-    route = route.replace(/\.+/g, '').trim();
+    route = route.replace(/\.+/g, '').replace(/\bFL\d+\b.*$/i, '').trim();
 
     const tripDataMatch = fullText.match(/TRIP\s+(\d+)\s+(\d{4})/i);
     const tripFuelStr = tripDataMatch ? parseNum(tripDataMatch[1]) : parseNum(extractRegex(fullText, /TRIP\s+(\d{3,})(?:\s+|\.)/i));
@@ -245,7 +252,11 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
     }
 
     return {
-        flightNumber: extractRegex(fullText, /(QTR\d+[A-Z]?)\/QR\d+/i) || extractRegex(fullText, /COPY\s+(QR\d+)/i) || 'Unknown',
+        flightNumber: extractRegex(fullText, /(QTR\d+[A-Z]?)\/QR\d+/i)
+            || extractRegex(fullText, /COPY\s+(QR\d+)/i)
+            || extractRegex(fullText, /(?:STATION COPY|Briefing Package)[:\s]+(QR\d+)/i)
+            || extractRegex(fullText, /\bQR(\d{3,4})\b/i)?.replace(/^/, 'QR') // fallback
+            || 'Unknown',
         aircraftType: extractRegex(fullText, /(?:[A-Z]{4}\s*\/\s*[A-Z]{4}|A\/C)\s+(?:[PMZ]\d{4}\s+)?([A-Z\d]{4})/)
             || extractRegex(fullText, /(?:TYPE|A\/C TYPE)\s*[:]?\s*(A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)/i)
             || extractRegex(fullText, /A\/C\s.*?(A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)/i) || 'Unknown',
@@ -474,11 +485,28 @@ function extractNavLog(fullText: string, arrivalICAO: string, registration: stri
 }
 
 const extractRoute = (text: string): string | null => {
-    // PDF text often lacks newlines, so we use \\s+ instead of \\n\\s*
-    const match = text.match(/(?:ATC\s*CLEARANCE|DEFRTE):[\s.]*([\s\S]+?)(?=\s+(?:FUEL|AWY|ITT|PAGE|MZFW|MTOW|RAMP|TRIP|$))/i)
-        || text.match(/AWY.*?WPT.*?AFOB\s+([A-Z0-9\-\s]{10,})/is); // Fallback to nav log header area
-    if (match) {
-        return match[1].replace(/\s+/g, ' ').trim();
+    // Strategy 1: Look for the ICAO-derived prefix pattern like 'MCT-90T:OOMS 26R ...'
+    // This is the ATC clearance route that appears after 'ATC CLEARANCE: .....'
+    // Format: [ALTN_ICAO]-[suffix]:[DEP_ICAO] [SID] [AWY1] ... [DEST_ICAO] [STAR]
+    const atcClearanceRouteMatch = text.match(/[A-Z]{3,4}-\d+[A-Z]*:[A-Z]{3,4}\s+([\w\s\/]+?)\n?\n?\n?\s*(FL\d+)/im);
+    if (atcClearanceRouteMatch) {
+        // Grab everything from the match up to the flight level
+        const rawMatch = text.match(/[A-Z]{3,4}-\d+[A-Z]*:([^\n]+(?:\n[^\n]+)*?)(?=\n\nFL|\nFL|\s{2,}FL|FUEL|AWY|ITT|PAGE|MZFW|MTOW|RAMP|TRIP)/im);
+        if (rawMatch) {
+            const route = rawMatch[1].replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+            const flMatch = text.match(/\n(FL\d+[^\n]+)/im);
+            if (flMatch) {
+                return route + ' ' + flMatch[1].trim();
+            }
+            return route;
+        }
     }
+
+    // Strategy 2: Look for ATC CLEARANCE: with the actual route content on same/next line
+    const atcMatch = text.match(/(?:ATC\s*CLEARANCE|DEFRTE):[\s.]*([A-Z].+?)(?=\s{2,}(?:FUEL|AWY|ITT|PAGE|MZFW|MTOW|RAMP|TRIP)|$)/is);
+    if (atcMatch && atcMatch[1].length > 10) {
+        return atcMatch[1].replace(/\s+/g, ' ').trim();
+    }
+
     return null;
 };
