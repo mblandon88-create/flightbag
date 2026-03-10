@@ -109,6 +109,38 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
                     ))}
                 </nav>
 
+                {(aircraftType || registration) && (
+                    <div className={cn(
+                        "mt-auto px-4 lg:px-6 py-4 flex flex-col gap-0.5 border-t border-white/5 bg-white/[0.02]",
+                        isSidebarCollapsed ? "items-center px-2" : ""
+                    )}>
+                        {!isSidebarCollapsed && (
+                            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-1">Aircraft</span>
+                        )}
+                        <div className={cn(
+                            "flex flex-col font-mono",
+                            isSidebarCollapsed ? "items-center gap-1" : "gap-0.5"
+                        )}>
+                            {aircraftType && (
+                                <span className={cn(
+                                    "text-aviation-accent font-bold leading-none",
+                                    isSidebarCollapsed ? "text-[8px]" : "text-[10px] md:text-xs uppercase tracking-tight"
+                                )}>
+                                    {aircraftType}
+                                </span>
+                            )}
+                            {registration && (
+                                <span className={cn(
+                                    "text-slate-400 font-medium leading-none",
+                                    isSidebarCollapsed ? "text-[8px]" : "text-[9px] md:text-[11px]"
+                                )}>
+                                    {registration}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 <div className="p-4 lg:p-5 border-t border-white/5">
                     <div className="flex items-center gap-3 text-slate-500">
                         <div className="w-2 h-2 rounded-full bg-aviation-success animate-pulse shrink-0" />
@@ -137,12 +169,6 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
                             <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">Flight info</span>
                             <div className="flex items-center gap-2">
                                 <span className="text-base md:text-xl font-mono font-bold text-aviation-success drop-shadow-md leading-none">{flightNumber}</span>
-                                {(aircraftType || registration) && (
-                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded-md border border-white/5">
-                                        <span className="text-[10px] md:text-xs font-mono font-bold text-aviation-accent">{aircraftType}</span>
-                                        {registration && <span className="text-[9px] md:text-[11px] font-mono text-slate-400 font-medium">{registration}</span>}
-                                    </div>
-                                )}
                             </div>
                         </div>
                     )}
@@ -150,14 +176,14 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
                     <div className="flex items-center gap-3 md:gap-6 z-10 w-auto justify-end">
                         <div className="flex flex-col items-end flex">
                             <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Date (UTC)</span>
-                            <span className="text-sm md:text-lg font-mono font-medium text-aviation-accent leading-none">
+                            <span className="text-xs md:text-base font-mono font-medium text-aviation-accent leading-none">
                                 {currentTime.getUTCDate().toString().padStart(2, '0')} {currentTime.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' }).toUpperCase()} {currentTime.getUTCFullYear()}
                             </span>
                         </div>
                         <div className="h-8 w-[1px] bg-white/10 block" />
                         <div className="flex flex-col items-end">
                             <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Zulu Time</span>
-                            <span className="text-sm md:text-lg font-mono font-medium text-aviation-accent leading-none">{formatZulu(currentTime)}</span>
+                            <span className="text-xs md:text-base font-mono font-medium text-aviation-accent leading-none">{formatZulu(currentTime)}</span>
                         </div>
                     </div>
                 </header>

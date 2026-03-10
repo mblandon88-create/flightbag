@@ -47,7 +47,7 @@ export interface RestData {
 
 export interface InflightData {
     activeSubTab: 'departure' | 'enroute' | 'arrival' | 'notes';
-    waypointInputs: Record<number, { ata: string; fuel: string; }>;
+    waypointInputs: Record<number, { ata: string; fuel: string; freq: string }>;
     takeoffTime: string;
     departureATIS: string;
     arrivalATIS: string;

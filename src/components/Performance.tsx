@@ -25,7 +25,7 @@ export const Performance: React.FC = () => {
 
 
     // Use raw values for precise internal calculations to avoid "double rounding"
-    const rawRampFuel = parseInt(flightData.rawRampFuel) || 0;
+    const rawRampFuel = parseInt(flightData.rampFuel) || 0;
     const rawEzfw = parseInt(flightData.rawEzfw) || 0;
 
     // Displayed "Planned" values (already rounded in store)
@@ -60,57 +60,58 @@ export const Performance: React.FC = () => {
             <div className="flex-1 flex flex-row flex-wrap gap-4 md:gap-8 min-h-0 items-start">
                 {/* Fuel Planning */}
                 <div className="glass-panel overflow-hidden flex flex-col min-h-0 w-full max-w-[360px]">
-                    <div className="px-4 py-3 md:px-6 md:py-4 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-3 shrink-0">
+                    <div className="px-3 py-1.5 md:px-4 md:py-2 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-3 shrink-0">
                         <Fuel className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
-                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Fuel Planning (kg)</h4>
+                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[10px] md:text-[11px]">Fuel Planning (kg)</h4>
                     </div>
-                    <div className="flex-1 p-4 md:p-5 space-y-1 md:space-y-2 overflow-y-auto custom-scrollbar">
+                    <div className="flex-1 px-2 py-4 md:px-3 md:py-5 space-y-1 md:space-y-2 overflow-y-auto custom-scrollbar">
                         <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">
-                            <span className="w-32 shrink-0"></span>
+                            <span className="w-36 shrink-0"></span>
                             <span className="w-24 text-right pr-8">Fuel</span>
                             <span>Time</span>
                         </div>
-                        <PerformanceRow label="Taxi" value={flightData.taxiFuel} time={flightData.taxiTime} valuePadding="pr-8" textSize="text-sm" />
-                        <PerformanceRow label="Trip" value={flightData.tripFuel} time={flightData.tripTime} valuePadding="pr-8" textSize="text-sm" />
+                        <PerformanceRow label="Taxi" value={flightData.taxiFuel} time={flightData.taxiTime} valuePadding="pr-8" textSize="text-sm" labelWidth="w-36" />
+                        <PerformanceRow label="Trip" value={flightData.tripFuel} time={flightData.tripTime} valuePadding="pr-8" textSize="text-sm" labelWidth="w-36" />
                         <PerformanceRow
                             label={`CONT ${flightData.contingencyRemarks ? `(${flightData.contingencyRemarks})` : ''}`}
                             value={flightData.contingencyFuel}
                             time={flightData.contTime}
                             valuePadding="pr-8"
                             textSize="text-sm"
+                            labelWidth="w-36"
                         />
-                        <PerformanceRow label="ALT" value={flightData.altFuel} time={flightData.altTime} valuePadding="pr-8" textSize="text-sm" />
-                        <PerformanceRow label="FINL" value={flightData.finResFuel} time={flightData.finlTime} valuePadding="pr-8" textSize="text-sm" />
+                        <PerformanceRow label="ALT" value={flightData.altFuel} time={flightData.altTime} valuePadding="pr-8" textSize="text-sm" labelWidth="w-36" />
+                        <PerformanceRow label="FINL" value={flightData.finResFuel} time={flightData.finlTime} valuePadding="pr-8" textSize="text-sm" labelWidth="w-36" />
                         <div className="pt-2 border-t border-white/5">
-                            <PerformanceRow label="Min Fuel Req" value={flightData.minReqFuel} time={flightData.minReqTime} success valuePadding="pr-8" textSize="text-sm" />
+                            <PerformanceRow label="Min Fuel Req" value={flightData.minReqFuel} time={flightData.minReqTime} success valuePadding="pr-8" textSize="text-sm" labelWidth="w-36" />
                         </div>
-                        <PerformanceRow label="Extra" value={flightData.extraFuel} time={flightData.extraTime} valuePadding="pr-8" textSize="text-sm" />
+                        <PerformanceRow label="Extra" value={flightData.extraFuel} time={flightData.extraTime} valuePadding="pr-8" textSize="text-sm" labelWidth="w-36" />
                         <PerformanceRow
                             label="PICD"
                             value={flightData.picFuel}
                             input
                             onChange={(val) => updateFlightData({ picFuel: val })}
-                            labelWidth="w-32"
-                            inputWidth="w-16"
-                            valuePadding="pr-1"
+                            labelWidth="w-36"
+                            inputWidth="w-18"
+                            valuePadding="pr-2"
                             textSize="text-sm"
                         />
                         <div className="pt-4 border-t border-white/5 space-y-3">
                             <div className="flex flex-col gap-1.5">
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <span className="text-sm font-bold text-aviation-accent uppercase tracking-widest w-20 shrink-0">Ramp Fuel</span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-sm font-bold text-aviation-accent uppercase tracking-widest w-24 shrink-0">Ramp Fuel</span>
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[9px] text-slate-500 font-bold uppercase w-10">Plan:</span>
+                                            <span className="text-[9px] text-slate-500 font-bold uppercase w-10 text-right pr-1">Plan:</span>
                                             <div className="flex items-center">
                                                 <span className="text-sm font-mono font-bold text-aviation-accent/60 w-24 text-right pr-8">{formatNumber(plannedRampFuel)}</span>
-                                                <span className="text-xs font-mono font-bold text-slate-400">
+                                                <span className="text-sm font-mono font-bold text-slate-400">
                                                     {Math.floor(flightData.rampTime / 60).toString().padStart(2, '0')}:{(flightData.rampTime % 60).toString().padStart(2, '0')}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[9px] text-aviation-accent font-bold uppercase w-10">Act:</span>
+                                            <span className="text-[9px] text-aviation-accent font-bold uppercase w-10 text-right pr-1">Act:</span>
                                             <div className="flex items-center gap-2">
                                                 <input
                                                     type="text"
@@ -119,14 +120,14 @@ export const Performance: React.FC = () => {
                                                     placeholder={formatNumber(plannedRampFuel)}
                                                     onChange={(e) => setInflightData({ revisedRampFuel: e.target.value.replace(/\D/g, '') })}
                                                     className={cn(
-                                                        "bg-black/40 border rounded py-0.5 text-sm font-mono text-aviation-accent w-18 text-right pr-2 focus:outline-none focus:border-aviation-accent",
+                                                        "bg-black/40 border rounded py-0.5 text-sm font-mono text-aviation-accent w-18 text-right pr-2 focus:outline-none focus:border-aviation-accent ml-auto",
                                                         fuelExceedsMax ? "border-red-500 text-red-500" : "border-aviation-accent/20 text-aviation-accent"
                                                     )}
                                                 />
                                                 {inflightData.revisedRampFuel && (
                                                     <span className={cn(
                                                         "text-[10px] font-mono font-bold",
-                                                        (actualRampFuel - plannedRampFuel) >= 0 ? "text- aviation-warning" : "text-aviation-success"
+                                                        (actualRampFuel - plannedRampFuel) >= 0 ? "text-aviation-warning" : "text-aviation-success"
                                                     )}>
                                                         {(actualRampFuel - plannedRampFuel) >= 0 ? '+' : ''}{formatNumber(actualRampFuel - plannedRampFuel)}
                                                     </span>
@@ -135,30 +136,36 @@ export const Performance: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-1 pl-21 mt-1">
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-[9px] text-slate-500 font-bold uppercase w-20 shrink-0">Max Allow:</span>
-                                        <span className={cn(
-                                            "text-xs font-mono font-bold whitespace-nowrap",
-                                            fuelExceedsMax ? "text-red-500 underline decoration-wavy" : "text-slate-400"
-                                        )}>
-                                            {formatNumber(Math.floor(maxAllowableFuel))}
-                                        </span>
-                                        <span className="text-[9px] font-bold text-aviation-warning ml-1 shrink-0">
-                                            ({limitingFactor})
-                                        </span>
-                                        {fuelExceedsMax && (
-                                            <span className="text-[8px] text-red-500 font-bold uppercase animate-pulse ml-2 shrink-0">EXCEEDS {limitingFactor}</span>
-                                        )}
+                                <div className="flex flex-col gap-1 mt-1">
+                                    <div className="flex items-center">
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase w-36 shrink-0 text-right pr-2">MAX F. ALLOW:</span>
+                                        <div className="flex items-center w-24 pr-8 shrink-0 justify-end">
+                                            <span className={cn(
+                                                "text-xs font-mono font-bold whitespace-nowrap",
+                                                fuelExceedsMax ? "text-red-500 underline decoration-wavy" : "text-slate-400"
+                                            )}>
+                                                {formatNumber(Math.floor(maxAllowableFuel))}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center -ml-6">
+                                            <span className="text-[9px] font-bold text-aviation-warning shrink-0">
+                                                ({limitingFactor})
+                                            </span>
+                                            {fuelExceedsMax && (
+                                                <span className="text-[8px] text-red-500 font-bold uppercase animate-pulse ml-2 shrink-0">EXCEEDS {limitingFactor}</span>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-[9px] text-slate-500 font-bold uppercase w-20 shrink-0">Margin:</span>
-                                        <span className={cn(
-                                            "text-[10px] font-mono font-bold whitespace-nowrap",
-                                            (maxAllowableFuel - actualRampFuel) >= 0 ? "text-aviation-success" : "text-red-500"
-                                        )}>
-                                            {(maxAllowableFuel - actualRampFuel) > 0 ? '+' : ''}{formatNumber(Math.floor(maxAllowableFuel - actualRampFuel))}
-                                        </span>
+                                    <div className="flex items-center">
+                                        <span className="text-[9px] text-slate-500 font-bold uppercase w-36 shrink-0 text-right pr-2">Margin:</span>
+                                        <div className="w-24 pr-8 shrink-0 flex justify-end">
+                                            <span className={cn(
+                                                "text-[10px] font-mono font-bold whitespace-nowrap",
+                                                (maxAllowableFuel - actualRampFuel) >= 0 ? "text-aviation-success" : "text-red-500"
+                                            )}>
+                                                {(maxAllowableFuel - actualRampFuel) > 0 ? '+' : ''}{formatNumber(Math.floor(maxAllowableFuel - actualRampFuel))}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -168,9 +175,9 @@ export const Performance: React.FC = () => {
 
                 {/* Weight Planning */}
                 <div className="glass-panel overflow-hidden flex flex-col min-h-0 w-full max-w-[460px]">
-                    <div className="px-4 py-3 md:px-6 md:py-4 bg-aviation-warning/5 border-b border-white/5 flex items-center gap-3 shrink-0">
+                    <div className="px-3 py-1.5 md:px-4 md:py-2 bg-aviation-warning/5 border-b border-white/5 flex items-center gap-3 shrink-0">
                         <Weight className="w-4 h-4 md:w-5 md:h-5 text-aviation-warning" />
-                        <h4 className="font-bold text-aviation-warning uppercase tracking-widest text-[11px] md:text-xs">Weight Planning (kg)</h4>
+                        <h4 className="font-bold text-aviation-warning uppercase tracking-widest text-[10px] md:text-[11px]">Weight Planning (kg)</h4>
                     </div>
                     <div className="flex-1 p-4 md:p-5 flex flex-col overflow-y-auto custom-scrollbar">
                         <div className="flex flex-wrap gap-x-12 gap-y-4 pb-4">
@@ -362,9 +369,10 @@ function PerformanceRow({
             <div className="flex items-center">
                 {input ? (
                     <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={value}
-                        onChange={(e) => onChange?.(e.target.value)}
+                        onChange={(e) => onChange?.(e.target.value.replace(/\D/g, ''))}
                         className={cn(
                             "bg-black/40 border border-white/10 rounded pl-2 py-0.5 font-mono text-white text-right focus:outline-none focus:border-aviation-accent",
                             inputWidth,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { parseLidoPDF, parseLidoText } from '../utils/pdfParser';
+import { parseLidoPDF, parseLidoClipboard } from '../utils/pdfParser';
 import { Upload, Loader2, CheckCircle2, Clipboard } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn, formatNumber } from '../lib/utils';
@@ -9,7 +9,7 @@ export const FlightInit: React.FC = () => {
     const { flightData, setFlightData, clearFlightData } = useStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [activeDataTab, setActiveDataTab] = useState<'general' | 'route'>('general');
+    const [activeDataTab, setActiveDataTab] = useState<'general' | 'route' | 'remarks'>('general');
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -38,7 +38,7 @@ export const FlightInit: React.FC = () => {
         setError(null);
         clearFlightData();
         try {
-            const parsed = parseLidoText(text);
+            const parsed = parseLidoClipboard(text);
             setFlightData(parsed);
         } catch (err) {
             console.error(err);
@@ -151,6 +151,18 @@ export const FlightInit: React.FC = () => {
                                 Route & FL
                                 {activeDataTab === 'route' && <motion.div layoutId="initTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-aviation-accent" />}
                             </button>
+                            {flightData.remarks && (
+                                <button
+                                    onClick={() => setActiveDataTab('remarks')}
+                                    className={cn(
+                                        "text-[10px] font-bold uppercase tracking-widest pb-1 transition-all relative",
+                                        activeDataTab === 'remarks' ? "text-aviation-accent" : "text-slate-500 hover:text-slate-300"
+                                    )}
+                                >
+                                    Remarks
+                                    {activeDataTab === 'remarks' && <motion.div layoutId="initTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-aviation-accent" />}
+                                </button>
+                            )}
                         </div>
 
                         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -162,9 +174,10 @@ export const FlightInit: React.FC = () => {
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: 10 }}
                                         transition={{ duration: 0.15 }}
-                                        className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-32 w-max"
+                                        className="flex flex-col gap-6 w-full"
                                     >
-                                        {/* ROW 1: Flight, Route, A/C */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-32 w-max max-w-full">
+                                            {/* ROW 1: Flight, Route, A/C */}
                                         <DataField label="Flight Number" value={flightData.flightNumber} highlight />
                                         <DataField label="Route" value={`${flightData.departure} ➔ ${flightData.arrival}`} />
                                         <DataField label="A/C Type & Reg" value={`${flightData.aircraftType} (${flightData.registration})`} />
@@ -203,8 +216,9 @@ export const FlightInit: React.FC = () => {
                                         <DataField label="MZFW" value={`${formatNumber(flightData.mzfw)} kg`} />
                                         <DataField label="MTOW" value={`${formatNumber(flightData.mtow)} kg`} />
                                         <div className="hidden md:block" /> {/* Column Spacer */}
+                                        </div>
                                     </motion.div>
-                                ) : (
+                                ) : activeDataTab === 'route' ? (
                                     <motion.div
                                         key="route"
                                         initial={{ opacity: 0, x: 10 }}
@@ -213,8 +227,23 @@ export const FlightInit: React.FC = () => {
                                         transition={{ duration: 0.15 }}
                                         className="space-y-6"
                                     >
-                                        <DataField label="Full Route String" value={flightData.route} mono />
+                                        <DataField label="Full Route String" value={flightData.route} />
                                         <DataField label="Flight Level(s)" value={flightData.flightLevel} warning />
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="remarks"
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -10 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="flex flex-col gap-4 w-full"
+                                    >
+                                        <div className="bg-black/20 rounded border border-white/5 p-4">
+                                            <p className="text-sm font-bold font-mono text-aviation-warning/90 leading-snug whitespace-pre-wrap break-words max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                                                {flightData.remarks}
+                                            </p>
+                                        </div>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -226,15 +255,14 @@ export const FlightInit: React.FC = () => {
     );
 };
 
-function DataField({ label, value, highlight, warning, mono }: { label: string, value: string, highlight?: boolean, warning?: boolean, mono?: boolean }) {
+function DataField({ label, value, highlight, warning }: { label: string, value: string, highlight?: boolean, warning?: boolean }) {
     return (
         <div className="flex flex-col">
             <span className="data-label text-[9px] uppercase tracking-tighter text-slate-500 font-bold mb-0">{label}</span>
             <p className={cn(
-                "text-sm font-medium leading-tight",
-                mono ? "font-mono" : "font-sans",
-                highlight ? "text-aviation-accent font-bold" : "text-slate-200",
-                warning ? "text-aviation-warning font-bold" : ""
+                "text-sm font-bold font-mono leading-tight",
+                highlight ? "text-aviation-accent" : "text-slate-200",
+                warning ? "text-aviation-warning" : ""
             )}>
                 {value}
             </p>

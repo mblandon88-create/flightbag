@@ -5,6 +5,9 @@ import {
     CheckCircle2,
     Navigation,
     Plane,
+    Clock,
+    Radio,
+    X,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn, formatNumber } from '../lib/utils';
@@ -18,6 +21,7 @@ interface InflightDisplayProps {
 interface WaypointInput {
     ata: string;
     fuel: string;
+    freq: string;
 }
 
 export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab = 'departure' }) => {
@@ -33,25 +37,30 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
     const [waypointInputs, setWaypointInputs] = useState<Record<number, WaypointInput>>(
         inflightData?.waypointInputs || {}
     );
+    const [directSegments, setDirectSegments] = useState<Array<{ from: number; to: number }>>([]);
+    const [editingWpIdx, setEditingWpIdx] = useState<number | null>(null);
+    const [showDirectToPicker, setShowDirectToPicker] = useState(false);
     const [takeoffTime, setTakeoffTime] = useState<string>(
         inflightData?.takeoffTime || ''
     );
-    const tacticalRampFuel = (inflightData?.revisedRampFuel || flightData?.rawRampFuel || '0');
+    const tacticalRampFuel = (inflightData?.revisedRampFuel || flightData?.rampFuel || '0');
     const taxiFuel = flightData?.taxiFuel || '0';
 
-    // Helper to round up to nearest 100 kg
-    const roundUp100 = (num: number) => Math.ceil(num / 100) * 100;
+    // Helper to round to nearest 100 kg
+    const round100 = (num: number) => Math.round(num / 100) * 100;
+    
+    // Taxi is rounded to nearest 100 before subtraction
+    const roundedTaxiFuel = round100(parseInt(taxiFuel));
 
-    // Tactical atf (Actual Takeoff Fuel) = (Revised Ramp OR Raw Ramp) - Taxi (Rounded up)
-    const tacticalAtfVal = parseInt(tacticalRampFuel) - parseInt(taxiFuel);
-    const tacticalAtf = roundUp100(tacticalAtfVal).toString();
+    // Tactical atf (Actual Takeoff Fuel) = (Revised Ramp OR Raw Ramp) - rounded Taxi
+    const tacticalAtfVal = parseInt(tacticalRampFuel) - roundedTaxiFuel;
+    const tacticalAtf = tacticalAtfVal.toString();
 
     const actualEzfw = (inflightData?.revisedEzfw || flightData?.rawEzfw || '0');
 
-    // Tactical atow (Actual Takeoff Weight) = (Revised EZFW OR Raw EZFW) + Tactical ATF (Rounded up)
-    // Note: tacticalAtf is already rounded, but we round the final sum again for safety
-    const tacticalAtowVal = parseInt(actualEzfw) + (parseInt(tacticalRampFuel) - parseInt(taxiFuel));
-    const tacticalAtow = roundUp100(tacticalAtowVal).toString();
+    // Tactical atow (Actual Takeoff Weight) = (Revised EZFW OR Raw EZFW) + Tactical ATF
+    const tacticalAtowVal = parseInt(actualEzfw) + tacticalAtfVal;
+    const tacticalAtow = round100(tacticalAtowVal).toString();
     const [atow, setAtow] = useState<string>(
         inflightData?.atow || tacticalAtow
     );
@@ -175,7 +184,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         setWaypointInputs(prev => ({
             ...prev,
             [index]: {
-                ...(prev[index] || { ata: '', fuel: '' }),
+                ...(prev[index] || { ata: '', fuel: '', freq: '' }),
                 [field]: finalValue
             }
         }));
@@ -246,22 +255,136 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
 
     return (
         <div className="h-full flex flex-col pt-0 overflow-hidden">
-            {/* Header */}
-            <section className="px-2 mb-2 shrink-0 flex items-center justify-between">
-                <h3 className="text-md md:text-lg font-bold text-white flex items-center gap-2">
-                    <Navigation className="w-5 h-5 text-aviation-accent" />
-                    Inflight Management
-                </h3>
-                <div className="hidden md:flex items-center gap-4 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-                    <div className="flex flex-col text-left">
-                        <span className="text-[9px] text-slate-500 font-bold tracking-widest uppercase">Dest Local Time</span>
-                        <span className="text-lg font-mono font-bold text-aviation-accent leading-none mt-0.5">{getLocalTime(currentTime, flightData.destTimezoneOffset || '')}</span>
-                    </div>
-                </div>
-            </section>
+            {/* Waypoint Edit Modal â€” at root level to escape backdrop-filter containment */}
+            {activeSubTab === 'enroute' && editingWpIdx !== null && !waypointEntries[editingWpIdx]?.isFir && (() => {
+                const wp = waypointEntries[editingWpIdx];
+                const modalInput = waypointInputs[editingWpIdx] || { ata: '', fuel: '', freq: '' };
+                const plnEta = calculateEta(takeoffTime, wp.stm);
+                const closeModal = () => { setEditingWpIdx(null); setShowDirectToPicker(false); };
+                return (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={closeModal}>
+                        <div className="bg-[#0f1117] border border-white/10 rounded-2xl p-5 w-80 shadow-2xl" onClick={e => e.stopPropagation()}>
 
-            <div className="flex-1 flex flex-col gap-4 min-h-0 px-2">
-                <div className="flex p-0.5 bg-white/5 rounded-lg border border-white/5 w-fit shrink-0">
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                        <Navigation className="w-4 h-4 text-aviation-accent" />
+                                        <span className="text-sm font-bold text-white font-mono">{wp.name}</span>
+                                    </div>
+                                    {plnEta && <span className="text-[10px] text-aviation-warning font-mono font-bold mt-0.5 ml-6">PLN ETA: {plnEta} Z</span>}
+                                </div>
+                                <button onClick={closeModal} className="text-slate-500 hover:text-white transition-colors p-1">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {showDirectToPicker ? (
+                                /* â”€â”€ Picker mode: choose the Direct-To target â”€â”€ */
+                                <>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <button onClick={() => setShowDirectToPicker(false)} className="text-slate-500 hover:text-white transition-colors p-0.5">
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                        <span className="text-[9px] font-bold text-sky-400 uppercase tracking-widest">Select Direct-To Waypoint</span>
+                                    </div>
+                                    <div className="overflow-y-auto max-h-60 space-y-1 custom-scrollbar pr-1">
+                                        {waypointEntries
+                                            .map((wpe, absIdx) => ({ wpe, absIdx }))
+                                            .filter(({ wpe, absIdx }) => !wpe.isFir && absIdx > editingWpIdx)
+                                            .map(({ wpe, absIdx }) => {
+                                                const eta = calculateEta(takeoffTime, wpe.stm);
+                                                return (
+                                                    <button
+                                                        key={absIdx}
+                                                        onClick={() => {
+                                                            setDirectSegments(prev => [...prev, { from: editingWpIdx, to: absIdx }]);
+                                                            setManualActiveIndex(editingWpIdx);
+                                                            closeModal();
+                                                        }}
+                                                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 hover:bg-sky-500/10 border border-transparent hover:border-sky-500/30 transition-colors text-left"
+                                                    >
+                                                        <span className="font-mono text-sm font-bold text-white">{wpe.name}</span>
+                                                        {eta && <span className="text-[10px] font-mono text-aviation-warning">{eta} Z</span>}
+                                                    </button>
+                                                );
+                                            })}
+                                    </div>
+                                </>
+                            ) : (
+                                /* â”€â”€ Normal mode: ATA / Fuel / Freq / Direct-To button â”€â”€ */
+                                <>
+                                    <div className="mb-3">
+                                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">ATA (Z)</label>
+                                        <HybridTimeInput
+                                            value={modalInput.ata}
+                                            onChange={(val) => handleInputChange(editingWpIdx, 'ata', val)}
+                                            className="flex-1 bg-black/40 border border-white/10 rounded-lg p-2.5 font-mono text-sm focus:outline-none focus:border-aviation-accent text-white w-full"
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">ACT Fuel (t)</label>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={modalInput.fuel}
+                                            onChange={(e) => handleInputChange(editingWpIdx, 'fuel', e.target.value)}
+                                            placeholder="0.0"
+                                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 font-mono text-sm focus:outline-none focus:border-aviation-accent text-white"
+                                        />
+                                    </div>
+                                    <div className="mb-4">
+                                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Frequency (VHF / HF)</label>
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={modalInput.freq || ''}
+                                            onChange={(e) => handleInputChange(editingWpIdx, 'freq', e.target.value)}
+                                            placeholder="e.g. 123.450 or 8918"
+                                            className="w-full bg-black/40 border border-white/10 rounded-lg p-2.5 font-mono text-sm focus:outline-none focus:border-aviation-accent text-white"
+                                        />
+                                    </div>
+                                    <div className="border-t border-white/10 pt-3 space-y-2">
+                                        {(() => {
+                                            const segFromHere = directSegments.find(s => s.from === editingWpIdx);
+                                            return segFromHere ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => setDirectSegments(prev => prev.filter(s => s !== segFromHere))}
+                                                        className="w-full py-2 rounded-lg bg-sky-500/20 border border-sky-500/50 text-sky-400 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors hover:bg-sky-500/30"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" /> Cancel Direct â†’ {waypointEntries[segFromHere.to]?.name}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setShowDirectToPicker(true)}
+                                                        className="w-full py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 hover:border-sky-500/30 text-[9px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+                                                    >
+                                                        <Navigation className="w-3 h-3" /> New Direct To...
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setShowDirectToPicker(true)}
+                                                    className="w-full py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-sky-400 hover:bg-sky-500/10 hover:border-sky-500/30 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors"
+                                                >
+                                                    <Navigation className="w-3.5 h-3.5" /> Direct To...
+                                                </button>
+                                            );
+                                        })()}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                );
+            })()}
+            {/* Combined header + tab bar */}
+            <div className="px-2 mb-1 shrink-0 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold text-white flex items-center gap-1.5 shrink-0">
+                    <Navigation className="w-4 h-4 text-aviation-accent" />
+                    <span className="hidden md:inline">Inflight</span>
+                </h3>
+                <div className="flex p-0.5 bg-white/5 rounded-lg border border-white/5">
                     {['departure', 'enroute', 'arrival', 'notes'].map((tab) => (
                         <button
                             key={tab}
@@ -277,10 +400,19 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                         </button>
                     ))}
                 </div>
+                <div className="hidden md:flex items-center gap-4 bg-black/40 px-3 py-1.5 rounded-xl border border-white/5 shrink-0">
+                    <div className="flex flex-col text-left">
+                        <span className="text-[9px] text-slate-500 font-bold tracking-widest uppercase">Dest Local</span>
+                        <span className="text-base font-mono font-bold text-aviation-accent leading-none mt-0.5">{getLocalTime(currentTime, flightData.destTimezoneOffset || '')}</span>
+                    </div>
+                </div>
+            </div>
 
-                <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0">
+            <div className="flex-1 flex flex-col min-h-0">
+
+                <div className="flex-1 glass-panel !p-0 overflow-hidden flex flex-col min-h-0">
                     {activeSubTab === 'departure' && (
-                        <div className="flex-1 p-3 md:p-5 space-y-3 md:space-y-5 overflow-y-auto custom-scrollbar">
+                        <div className="flex-1 p-3 md:p-5 pt-0 md:pt-0 space-y-3 md:space-y-5 overflow-y-auto custom-scrollbar">
                             <div className="flex items-center justify-between shrink-0">
                                 <div className="flex items-center gap-3">
                                     <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-aviation-success/10 flex items-center justify-center">
@@ -302,11 +434,10 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                             <div className="grid grid-cols-2 gap-3 md:gap-4">
                                 <div className="space-y-1 md:space-y-2">
                                     <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">Block Off Time Z</label>
-                                    <input
-                                        type="time"
+                                    <HybridTimeInput
                                         value={formatTimeForInput(waypointInputs[-1]?.ata)}
-                                        onChange={(e) => setWaypointInputs(prev => ({ ...prev, [-1]: { ...prev[-1], ata: e.target.value.replace(':', '') } }))}
-                                        className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                        onChange={(val) => handleInputChange(-1, 'ata', val)}
+                                        className="w-40 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
                                     />
                                     {(() => {
                                         const blockOff = waypointInputs[-1]?.ata;
@@ -323,11 +454,10 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                 </div>
                                 <div className="space-y-1 md:space-y-2">
                                     <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">T.O Time Z</label>
-                                    <input
-                                        type="time"
+                                    <HybridTimeInput
                                         value={takeoffTime}
-                                        onChange={(e) => setTakeoffTime(e.target.value)}
-                                        className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                        onChange={setTakeoffTime}
+                                        className="w-40 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
                                     />
                                     {takeoffTime && (
                                         <p className="text-[10px] font-bold uppercase text-aviation-accent">
@@ -380,7 +510,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                             const rawValue = e.target.value.replace(/[^\d]/g, '');
                                             setAtf(rawValue);
                                         }}
-                                        placeholder={`e.g. ${flightData.rampFuel}`}
+                                        placeholder={`e.g. ${tacticalAtf}`}
                                         className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
                                     />
                                 </div>
@@ -401,39 +531,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                     {activeSubTab === 'enroute' && (
                         <>
                             <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-2 bg-white/5 border-b border-white/5 shrink-0 text-[9px] md:text-[10px]">
-                                    <div className="flex items-center">
-                                        <span className="text-slate-500 font-bold uppercase tracking-widest mr-2">ATOW:</span>
-                                        {(() => {
-                                            const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
-                                            const displayAtow = isOverMTOW ? tacticalAtow : (atow || tacticalAtow);
-                                            return (
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className={cn(
-                                                        "font-mono font-bold",
-                                                        parseFloat(displayAtow) <= Number(flightData.mlw) ? "text-aviation-success" : "text-white",
-                                                        isOverMTOW && "opacity-50"
-                                                    )}>
-                                                        {formatNumber(displayAtow)}
-                                                    </span>
-                                                    {isOverMTOW && (
-                                                        <span className="text-[8px] text-red-500 font-bold uppercase">(MTOW Exceeded - Using Tactical Planning)</span>
-                                                    )}
-                                                </div>
-                                            );
-                                        })()}
-                                        {flightData.mlw && (
-                                            <>
-                                                <div className="w-px h-3 bg-white/10 mx-2"></div>
-                                                <span className="text-slate-600 font-mono">MLW: {formatNumber(flightData.mlw)}</span>
-                                            </>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-slate-500 font-bold uppercase tracking-widest">ATF:</span>
-                                        <span className="text-white font-mono font-bold">{formatNumber(atf) || '-'}</span>
-                                    </div>
-                                </div>
+
 
                                 {(() => {
                                     if (!flightData) return null;
@@ -503,42 +601,58 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                 <table className="w-full text-left border-collapse min-w-[700px]">
                                                     <thead className="sticky top-0 z-10 bg-[#0a0a0a]">
                                                         <tr className="bg-white/5 border-b border-white/5">
-                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">Waypoint</th>
-                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">TRK/DIS</th>
-                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">PLN ETA</th>
-                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">ATA (Z)</th>
-                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">PLN Fuel</th>
-                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">ACT Fuel</th>
-                                                            <th className="px-4 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">Diff</th>
+                                                            <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500">Waypoint</th>
+                                                            <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">TRK/DIS</th>
+                                                            <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">PLN ETA</th>
+                                                            <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">ATA (Z)</th>
+                                                            <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">PLN Fuel</th>
+                                                            <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">ACT Fuel</th>
+                                                            <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">Diff</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-white/5">
                                                         {waypointEntries.map((wp, idx) => {
-                                                            const input = waypointInputs[idx] || { ata: '', fuel: '' };
+                                                            const input = waypointInputs[idx] || { ata: '', fuel: '', freq: '' };
                                                             const isHighlight = idx === activeIndex;
                                                             const isMlwWaypoint = idx === mlwWaypointIdx;
                                                             const isEtops = wp.name.includes('ENTRY') || wp.name.includes('EXIT') || wp.name.includes('ETP');
+                                                            const isSkipped = directSegments.some(seg => idx > seg.from && idx < seg.to);
+                                                            const isDirectTarget = directSegments.some(seg => seg.to === idx);
+                                                            const isDirectFrom = directSegments.some(seg => seg.from === idx);
+                                                            const directFromSeg = directSegments.find(s => s.from === idx);
 
-                                                            // Calculate discrepancy relative to ACTUAL fuel at takeoff
+
                                                             const actualTakeoffFuel = parseFloat(atf) || Number(flightData.rampFuel);
-                                                            const plannedBurnAtWp = startRfob > 0 && wp.rfob > 0 ? (startRfob - wp.rfob) * 1000 : 0;
-                                                            const expectedFuel = (actualTakeoffFuel - plannedBurnAtWp) / 1000;
-
+                                                            const planTofKg = parseInt(tacticalAtf);
+                                                            const expectedFuel = wp.rfob > 0 ? wp.rfob + (actualTakeoffFuel - planTofKg) / 1000 : 0;
                                                             const actFuel = parseFloat(input.fuel);
                                                             const diff = !isNaN(actFuel) ? (actFuel - expectedFuel).toFixed(1) : null;
+
+                                                            const plnEta = wp.isFir ? null : calculateEta(takeoffTime, wp.stm);
+                                                            const ataDiff = (input.ata && input.ata.replace(':', '').length === 4 && plnEta)
+                                                                ? diffMinutes(input.ata, plnEta) : null;
 
                                                             return (
                                                                 <tr
                                                                     key={idx}
                                                                     ref={el => { rowRefs.current[idx] = el; }}
+                                                                    onClick={() => { if (!wp.isFir) setEditingWpIdx(idx); }}
                                                                     className={cn(
-                                                                        "transition-colors group border-l-4",
-                                                                        isHighlight ? "bg-white/10 border-aviation-accent shadow-md z-10 relative" : "border-transparent hover:bg-white/5",
-                                                                        isMlwWaypoint && !isHighlight ? "bg-aviation-warning/10" : "",
-                                                                        wp.isFir && !isHighlight ? "bg-aviation-accent/5" : ""
+                                                                        "transition-colors border-l-4",
+                                                                        !wp.isFir && "cursor-pointer",
+                                                                        isHighlight
+                                                                            ? "bg-white/10 border-aviation-accent shadow-md z-10 relative"
+                                                                            : isDirectTarget || isDirectFrom
+                                                                                ? "border-sky-400 bg-sky-500/5 hover:bg-sky-500/10"
+                                                                                : isSkipped
+                                                                                    ? "border-sky-400/40 hover:bg-white/5"
+                                                                                    : "border-transparent hover:bg-white/5",
+                                                                        isMlwWaypoint && !isHighlight && !isDirectTarget && !isDirectFrom ? "bg-aviation-warning/10" : "",
+                                                                        wp.isFir && !isHighlight ? "bg-aviation-accent/5" : "",
+                                                                        isSkipped ? "opacity-40" : ""
                                                                     )}
                                                                 >
-                                                                    <td className="px-4 py-2 md:py-3 cursor-pointer" onClick={() => setManualActiveIndex(idx)}>
+                                                                    <td className="px-2 py-1 md:py-1.5">
                                                                         <div className="flex items-center gap-2">
                                                                             {wp.isFir ? (
                                                                                 <div className="flex items-center gap-2 text-aviation-accent">
@@ -547,84 +661,77 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                                                 </div>
                                                                             ) : (
                                                                                 <div className="flex items-center gap-2">
-                                                                                    {isMlwWaypoint ? <Plane className="w-3 h-3 text-aviation-warning -rotate-45" /> :
-                                                                                        wp.isToc ? <CheckCircle2 className="w-3 h-3 text-aviation-success" /> : // Using success for TOC just to differ
-                                                                                            wp.isTod ? <AlertCircle className="w-3 h-3 text-aviation-warning" /> :
-                                                                                                <Navigation className="w-3 h-3 text-slate-500" />}
+                                                                                    {isDirectTarget ? <Navigation className="w-3 h-3 text-sky-400" /> :
+                                                                                        isMlwWaypoint ? <Plane className="w-3 h-3 text-aviation-warning -rotate-45" /> :
+                                                                                            wp.isToc ? <CheckCircle2 className="w-3 h-3 text-aviation-success" /> :
+                                                                                                wp.isTod ? <AlertCircle className="w-3 h-3 text-aviation-warning" /> :
+                                                                                                    <Navigation className="w-3 h-3 text-slate-500" />}
                                                                                     <div className="flex flex-col">
                                                                                         {wp.procedure && (
-                                                                                            <span className="text-[9px] font-bold text-aviation-accent uppercase tracking-tighter leading-none mb-0.5">
-                                                                                                {wp.procedure}
+                                                                                            <span className="text-[9px] font-bold text-aviation-accent uppercase tracking-tighter leading-none mb-0.5">{wp.procedure}</span>
+                                                                                        )}
+                                                                                        <div className="flex items-center gap-1 flex-wrap">
+                                                                                            <span className={cn("text-xs md:text-sm font-bold font-mono", isEtops ? "text-amber-400" : "text-white")}>{wp.name}</span>
+                                                                                            {directFromSeg && (
+                                                                                                <span className="text-[8px] font-bold text-sky-400 bg-sky-500/20 border border-sky-400/50 rounded px-1 py-px font-mono whitespace-nowrap">
+                                                                                                    {`DCT\u2192${waypointEntries[directFromSeg.to]?.name ?? "?"}`}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {isDirectTarget && (
+                                                                                                <span className="text-[8px] font-bold text-sky-400 bg-sky-500/20 border border-sky-400/50 rounded px-1 py-px font-mono whitespace-nowrap">
+                                                                                                    {"\u25c4DCT"}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        {isMlwWaypoint && <span className="text-[8px] font-bold text-aviation-warning uppercase tracking-widest">&lt; MLW</span>}
+                                                                                        {isEtops && <span className="text-[8px] font-bold text-amber-500 uppercase tracking-widest">ETOPS POINT</span>}
+                                                                                        {input.freq && (
+                                                                                            <span className="text-[11px] font-mono text-sky-400 mt-0.5 flex items-center gap-0.5">
+                                                                                                <Radio className="w-2.5 h-2.5" />{input.freq}
                                                                                             </span>
-                                                                                        )}
-                                                                                        <span className={cn("text-xs md:text-sm font-bold font-mono", isEtops ? "text-amber-400" : "text-white")}>{wp.name}</span>
-                                                                                        {isMlwWaypoint && (
-                                                                                            <span className="text-[8px] font-bold text-aviation-warning uppercase tracking-widest">&lt; MLW</span>
-                                                                                        )}
-                                                                                        {isEtops && (
-                                                                                            <span className="text-[8px] font-bold text-amber-500 uppercase tracking-widest">ETOPS POINT</span>
                                                                                         )}
                                                                                     </div>
                                                                                 </div>
                                                                             )}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-4 py-2 md:py-3">
-                                                                        <div className="flex flex-col items-start justify-center font-mono text-[10px] md:text-xs">
+                                                                    <td className="px-2 py-1 md:py-1.5 text-center">
+                                                                        <div className="flex flex-col items-center justify-center font-mono text-[10px] md:text-xs">
                                                                             <span className="text-aviation-accent">{wp.isFir ? '-' : (wp.itt || '-')}</span>
                                                                             {!wp.isFir && wp.dis && (
                                                                                 <span className="text-slate-500 text-[8px] md:text-[9px] mt-0.5">{wp.dis} NM</span>
                                                                             )}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-aviation-warning font-bold">
+                                                                    <td className="px-2 py-1 md:py-1.5 font-mono text-[10px] md:text-xs text-aviation-warning font-bold text-center">
                                                                         {wp.isFir ? '-' : (calculateEta(takeoffTime, wp.stm) || '-')}
                                                                     </td>
-                                                                    <td className="px-4 py-2 md:py-3 relative group/ata">
+                                                                    <td className="px-2 py-1 md:py-1.5 text-center">
                                                                         {!wp.isFir && (
-                                                                            <div className="flex items-center gap-1">
-                                                                                <input
-                                                                                    type="text"
-                                                                                    placeholder="0000"
-                                                                                    value={input.ata}
-                                                                                    onChange={(e) => handleInputChange(idx, 'ata', e.target.value)}
-                                                                                    className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-aviation-accent w-16 focus:outline-none focus:border-aviation-accent/50 text-center"
-                                                                                />
-                                                                                {(() => {
-                                                                                    if (!input.ata || input.ata.replace(':', '').length !== 4) return null;
-                                                                                    const plnEta = calculateEta(takeoffTime, wp.stm);
-                                                                                    if (!plnEta) return null;
-                                                                                    const diff = diffMinutes(input.ata, plnEta);
-                                                                                    if (diff === 0) return null;
-                                                                                    return (
-                                                                                        <span className={cn(
-                                                                                            "text-[9px] font-mono font-bold whitespace-nowrap",
-                                                                                            diff > 0 ? "text-red-500" : "text-aviation-success"
-                                                                                        )}>
-                                                                                            {diff > 0 ? `+${diff}` : `-${Math.abs(diff)}`}
-                                                                                        </span>
-                                                                                    );
-                                                                                })()}
+                                                                            <div className="flex items-center justify-center gap-1">
+                                                                                <span className={cn("font-mono text-[10px] md:text-xs font-bold", input.ata ? "text-aviation-success" : "text-slate-600")}>
+                                                                                    {input.ata || '--:--'}
+                                                                                </span>
+                                                                                {ataDiff !== null && ataDiff !== 0 && (
+                                                                                    <span className={cn("text-[9px] font-mono font-bold whitespace-nowrap", ataDiff > 0 ? "text-red-500" : "text-aviation-success")}>
+                                                                                        {ataDiff > 0 ? `+${ataDiff}` : `-${Math.abs(ataDiff)}`}
+                                                                                    </span>
+                                                                                )}
                                                                             </div>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs text-slate-400">
+                                                                    <td className="px-2 py-1 md:py-1.5 font-mono text-[10px] md:text-xs text-slate-400 text-center">
                                                                         {wp.isFir ? '-' : wp.rfob.toFixed(1)}
                                                                     </td>
-                                                                    <td className="px-4 py-2 md:py-3">
+                                                                    <td className="px-2 py-1 md:py-1.5 text-center">
                                                                         {!wp.isFir && (
-                                                                            <input
-                                                                                type="number"
-                                                                                step="0.1"
-                                                                                placeholder="0.0"
-                                                                                value={input.fuel}
-                                                                                onChange={(e) => handleInputChange(idx, 'fuel', e.target.value)}
-                                                                                className="bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] md:text-xs font-mono text-white w-16 focus:outline-none focus:border-aviation-accent/50 text-right"
-                                                                            />
+                                                                            <span className={cn("font-mono text-[10px] md:text-xs font-bold", input.fuel ? "text-white" : "text-slate-600")}>
+                                                                                {input.fuel || '-'}
+                                                                            </span>
                                                                         )}
                                                                     </td>
                                                                     <td className={cn(
-                                                                        "px-4 py-2 md:py-3 font-mono text-[10px] md:text-xs font-bold",
+                                                                        "px-2 py-1 md:py-1.5 font-mono text-[10px] md:text-xs font-bold text-center",
                                                                         diff === null ? "text-slate-500" : (parseFloat(diff) >= 0 ? "text-aviation-success" : "text-aviation-warning")
                                                                     )}>
                                                                         {!wp.isFir ? (diff ? (parseFloat(diff) > 0 ? `+${diff}` : diff) : '-') : ''}
@@ -640,7 +747,48 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                 })()}
                             </div>
 
-                            <div className="grid grid-cols-3 gap-2 md:gap-4 py-2 px-4 bg-white/5 border-t border-white/5 shrink-0">
+                            <div className="grid grid-cols-4 gap-1 py-0 px-1 bg-white/5 border-t border-white/5 shrink-0 w-full">
+                                {/* GW â€” live gross weight at current waypoint */}
+                                {(() => {
+                                    const azfw = parseInt(atow || '0') - parseInt(atf || '0');
+                                    const wpes = flightData.waypointEntries || [];
+
+                                    // Determine current waypoint index
+                                    let currentWpIdx: number | null = manualActiveIndex;
+                                    if (currentWpIdx === null && takeoffTime) {
+                                        for (let i = 0; i < wpes.length; i++) {
+                                            if (wpes[i].isFir) continue;
+                                            const eta = calculateEta(takeoffTime, wpes[i].stm);
+                                            if (eta && eta >= currentTime) { currentWpIdx = i; break; }
+                                        }
+                                    }
+
+                                    // Fuel at current waypoint: actual if logged, else plan rfob
+                                    let fuelKg = parseInt(atf || '0'); // default = takeoff fuel
+                                    if (currentWpIdx !== null && wpes[currentWpIdx]) {
+                                        const inp = waypointInputs[currentWpIdx];
+                                        fuelKg = inp?.fuel
+                                            ? Math.round(parseFloat(inp.fuel) * 1000)
+                                            : Math.round(wpes[currentWpIdx].rfob * 1000);
+                                    }
+
+                                    const gw = azfw + fuelKg;
+                                    const mlw = Number(flightData.mlw) || 0;
+                                    const mtow = Number(flightData.mtow) || 0;
+                                    const isBelowMlw = mlw > 0 && gw <= mlw;
+                                    const isOverMtow = mtow > 0 && gw > mtow;
+                                    const wpLabel = (currentWpIdx !== null && wpes[currentWpIdx])
+                                        ? wpes[currentWpIdx].name : 'T/O';
+                                    return (
+                                        <InflightStat
+                                            label={`GW @ ${wpLabel}`}
+                                            value={formatNumber(gw)}
+                                            success={isBelowMlw && !isOverMtow}
+                                            error={isOverMtow}
+                                            info={isOverMtow ? 'MTOW!' : (mlw ? `MLW: ${formatNumber(mlw)}` : undefined)}
+                                        />
+                                    );
+                                })()}
                                 {(() => {
                                     const staClean = flightData.sta.includes('/') ? flightData.sta.split('/')[1] : flightData.sta;
                                     const staFmt = flightData.sta.includes('/') ? `${staClean.substring(0, 2)}:${staClean.substring(2, 4)}` : flightData.sta;
@@ -689,7 +837,7 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                     )}
 
                     {activeSubTab === 'arrival' && (
-                        <div className="flex-1 p-3 md:p-5 space-y-3 md:space-y-5 overflow-y-auto custom-scrollbar text-white">
+                        <div className="flex-1 p-3 md:p-5 pt-0 md:pt-0 space-y-3 md:space-y-5 overflow-y-auto custom-scrollbar text-white">
                             <div className="flex items-center justify-between shrink-0">
                                 <div className="flex items-center gap-3">
                                     <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-aviation-accent/10 flex items-center justify-center">
@@ -711,20 +859,18 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                             <div className="grid grid-cols-2 gap-3 md:gap-4">
                                 <div className="space-y-1 md:space-y-2">
                                     <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">Touchdown Time Z</label>
-                                    <input
-                                        type="time"
+                                    <HybridTimeInput
                                         value={formatTimeForInput(waypointInputs[998]?.ata || globalEstAta)}
-                                        onChange={(e) => handleInputChange(998, 'ata', e.target.value)}
-                                        className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                        onChange={(val) => handleInputChange(998, 'ata', val)}
+                                        className="w-40 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
                                     />
                                 </div>
                                 <div className="space-y-1 md:space-y-2">
                                     <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-widest">Block On Time Z</label>
-                                    <input
-                                        type="time"
+                                    <HybridTimeInput
                                         value={formatTimeForInput(waypointInputs[999]?.ata)}
-                                        onChange={(e) => handleInputChange(999, 'ata', e.target.value)}
-                                        className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
+                                        onChange={(val) => handleInputChange(999, 'ata', val)}
+                                        className="w-40 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
                                     />
                                     {(() => {
                                         const blockOn = waypointInputs[999]?.ata;
@@ -772,26 +918,118 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
     );
 }
 
+// â”€â”€â”€ Hybrid Time Input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Allows direct keyboard entry (HHMM auto-formatted to HH:MM) OR native scroll
+// picker via the clock icon button. Works on both desktop and iPad.
+interface HybridTimeInputProps {
+    value: string;           // HH:MM or empty string
+    onChange: (val: string) => void; // emits HH:MM
+    className?: string;
+    placeholder?: string;
+}
+
+function HybridTimeInput({ value, onChange, className, placeholder = 'HH:MM' }: HybridTimeInputProps) {
+    const pickerRef = useRef<HTMLInputElement>(null);
+    const [localText, setLocalText] = React.useState(value);
+
+    // Keep local text in sync when the parent updates (e.g. auto-fill from globalEstAta)
+    const prevValueRef = useRef(value);
+    if (prevValueRef.current !== value) {
+        prevValueRef.current = value;
+        setLocalText(value);
+    }
+
+    const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value.replace(/\D/g, '').substring(0, 4);
+        let display = raw;
+        if (raw.length >= 3) {
+            display = `${raw.substring(0, 2)}:${raw.substring(2, 4)}`;
+        }
+        setLocalText(display);
+        if (raw.length === 4) {
+            onChange(display); // emit HH:MM only when complete
+        } else if (raw.length === 0) {
+            onChange('');
+        }
+    };
+
+    const handleTextBlur = () => {
+        // Snap back to last valid value if the user left it incomplete
+        if (value) {
+            setLocalText(value);
+        } else if (localText && localText.replace(':', '').length !== 4) {
+            setLocalText('');
+        }
+    };
+
+    const handlePickerClick = () => {
+        try {
+            pickerRef.current?.showPicker?.();
+        } catch {
+            pickerRef.current?.focus();
+            pickerRef.current?.click();
+        }
+    };
+
+    const handlePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setLocalText(e.target.value);
+        onChange(e.target.value); // native <input type="time"> emits HH:MM
+    };
+
+    return (
+        <div className="flex items-center gap-1.5">
+            <input
+                type="text"
+                inputMode="numeric"
+                value={localText}
+                onChange={handleTextChange}
+                onBlur={handleTextBlur}
+                placeholder={placeholder}
+                maxLength={5}
+                className={className}
+            />
+            <button
+                type="button"
+                onClick={handlePickerClick}
+                className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+                title="Open time picker"
+            >
+                <Clock className="w-3.5 h-3.5" />
+            </button>
+            {/* Hidden native time picker â€” triggered by the clock button */}
+            <input
+                ref={pickerRef}
+                type="time"
+                value={value}
+                onChange={handlePickerChange}
+                className="sr-only absolute pointer-events-none"
+                tabIndex={-1}
+                aria-hidden="true"
+            />
+        </div>
+    );
+}
+
 function InflightStat({ label, value, localTime, warning, success, error, info }: { label: string, value: string, localTime?: string, warning?: boolean, success?: boolean, error?: boolean, info?: string }) {
     return (
-        <div className="flex flex-col items-center justify-center p-1 relative">
-            <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">{label}</span>
+        <div className="flex flex-col items-center justify-center p-0.5 relative">
+            <span className="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest">{label}</span>
             <div className="flex flex-col items-center">
                 <span className={cn(
-                    "text-sm md:text-lg font-mono font-bold leading-none",
+                    "text-xs md:text-base font-mono font-bold leading-none",
                     error ? "text-red-500" : success ? "text-aviation-success" : warning ? "text-aviation-warning" : "text-aviation-accent"
                 )}>
                     {value}
                 </span>
                 {localTime && localTime !== '-' && (
-                    <span className="text-[10px] md:text-[11px] font-mono font-medium text-slate-400 mt-0.5 leading-none">
+                    <span className="text-[9px] md:text-[10px] font-mono font-medium text-slate-400 leading-none">
                         L: {localTime}
                     </span>
                 )}
             </div>
             {info && (
                 <span className={cn(
-                    "text-[8px] md:text-[9px] font-bold mt-0.5 leading-none",
+                    "text-[8px] md:text-[9px] font-bold leading-none",
                     error ? "text-red-500" : success ? "text-aviation-success" : warning ? "text-aviation-warning" : "text-aviation-accent"
                 )}>
                     {info}
@@ -800,3 +1038,6 @@ function InflightStat({ label, value, localTime, warning, success, error, info }
         </div>
     );
 }
+
+
+

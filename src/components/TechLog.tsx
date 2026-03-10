@@ -113,7 +113,7 @@ export const TechLog: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col gap-3 min-h-0">
 
-            <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0 border-t-2 border-t-aviation-accent max-w-4xl mx-auto w-full">
+            <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0 border-t-2 border-t-aviation-accent max-w-xl mx-auto w-full">
                 <div className="flex-1 p-2 md:p-3 flex flex-col overflow-y-auto custom-scrollbar">
 
                     {/* 2-Column Grid filling vertical space */}
@@ -133,7 +133,7 @@ export const TechLog: React.FC = () => {
                             />
                             <CalculatedField
                                 label="(C) REQUIRED UPLIFT (KG)"
-                                formula="(A) - (B)"
+                                formula="(A)-(B)"
                                 value={reqUplift}
                             />
                             <InputField
@@ -164,7 +164,7 @@ export const TechLog: React.FC = () => {
                             />
                             <CalculatedField
                                 label="(G) METERED UPLIFT (KG)"
-                                formula="(D) x (E)"
+                                formula="(D)x(E)"
                                 value={meteredUpliftKg}
                             />
                             <InputField
@@ -174,7 +174,7 @@ export const TechLog: React.FC = () => {
                             />
                             <CalculatedField
                                 label="(I) FUEL USED ON GROUND (KG)"
-                                formula="(F) - (B)"
+                                formula="(F)-(B)"
                                 value={fuelUsedOnGround}
                             />
                         </div>
