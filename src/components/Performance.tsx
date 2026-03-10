@@ -8,7 +8,7 @@ export const Performance: React.FC = () => {
 
     if (!flightData) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 glass-panel p-8">
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 glass-panel !p-0 p-8">
                 <Fuel className="w-12 h-12 mb-4 opacity-20" />
                 <p className="text-sm font-medium">Please load a flight plan in the Flight Init tab first.</p>
             </div>
@@ -53,19 +53,19 @@ export const Performance: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col gap-4 md:gap-6 min-h-0">
             <section className="shrink-0">
-                <h3 className="text-lg md:text-xl font-bold text-white mb-0.5">Performance Data</h3>
+                <h3 className="text-sm md:text-base font-bold text-white mb-0.5">Performance Data</h3>
                 <p className="text-slate-400 text-[10px] md:text-xs">Review and verify fuel and weight planning parameters.</p>
             </section>
 
             <div className="flex-1 flex flex-row flex-wrap gap-4 md:gap-8 min-h-0 items-start">
                 {/* Fuel Planning */}
-                <div className="glass-panel overflow-hidden flex flex-col min-h-0 w-full max-w-[360px]">
-                    <div className="px-3 py-1.5 md:px-4 md:py-2 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-3 shrink-0">
-                        <Fuel className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
+                <div className="glass-panel !p-0 overflow-hidden flex flex-col min-h-0 w-full max-w-[360px]">
+                    <div className="px-1.5 py-1 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                        <Fuel className="w-3 h-3 text-aviation-accent" />
                         <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[10px] md:text-[11px]">Fuel Planning (kg)</h4>
                     </div>
                     <div className="flex-1 px-2 py-4 md:px-3 md:py-5 space-y-1 md:space-y-2 overflow-y-auto custom-scrollbar">
-                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">
+                        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">
                             <span className="w-36 shrink-0"></span>
                             <span className="w-24 text-right pr-8">Fuel</span>
                             <span>Time</span>
@@ -102,16 +102,16 @@ export const Performance: React.FC = () => {
                                     <span className="text-sm font-bold text-aviation-accent uppercase tracking-widest w-24 shrink-0">Ramp Fuel</span>
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[9px] text-slate-500 font-bold uppercase w-10 text-right pr-1">Plan:</span>
+                                            <span className="text-xs text-slate-500 font-bold uppercase w-10 text-right pr-1">Plan:</span>
                                             <div className="flex items-center">
-                                                <span className="text-sm font-mono font-bold text-aviation-accent/60 w-24 text-right pr-8">{formatNumber(plannedRampFuel)}</span>
+                                                <span className="text-sm md:text-base font-mono font-bold text-aviation-accent/60 w-24 text-right pr-8">{formatNumber(plannedRampFuel)}</span>
                                                 <span className="text-sm font-mono font-bold text-slate-400">
                                                     {Math.floor(flightData.rampTime / 60).toString().padStart(2, '0')}:{(flightData.rampTime % 60).toString().padStart(2, '0')}
                                                 </span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[9px] text-aviation-accent font-bold uppercase w-10 text-right pr-1">Act:</span>
+                                            <span className="text-xs text-aviation-accent font-bold uppercase w-10 text-right pr-1">Act:</span>
                                             <div className="flex items-center gap-2">
                                                 <input
                                                     type="text"
@@ -120,13 +120,13 @@ export const Performance: React.FC = () => {
                                                     placeholder={formatNumber(plannedRampFuel)}
                                                     onChange={(e) => setInflightData({ revisedRampFuel: e.target.value.replace(/\D/g, '') })}
                                                     className={cn(
-                                                        "bg-black/40 border rounded py-0.5 text-sm font-mono text-aviation-accent w-18 text-right pr-2 focus:outline-none focus:border-aviation-accent ml-auto",
+                                                        "bg-black/40 border rounded py-0.5 text-sm md:text-base font-mono text-aviation-accent w-18 text-right pr-2 focus:outline-none focus:border-aviation-accent ml-auto",
                                                         fuelExceedsMax ? "border-red-500 text-red-500" : "border-aviation-accent/20 text-aviation-accent"
                                                     )}
                                                 />
                                                 {inflightData.revisedRampFuel && (
                                                     <span className={cn(
-                                                        "text-[10px] font-mono font-bold",
+                                                        "text-xs font-mono font-bold",
                                                         (actualRampFuel - plannedRampFuel) >= 0 ? "text-aviation-warning" : "text-aviation-success"
                                                     )}>
                                                         {(actualRampFuel - plannedRampFuel) >= 0 ? '+' : ''}{formatNumber(actualRampFuel - plannedRampFuel)}
@@ -138,17 +138,17 @@ export const Performance: React.FC = () => {
                                 </div>
                                 <div className="flex flex-col gap-1 mt-1">
                                     <div className="flex items-center">
-                                        <span className="text-[9px] text-slate-500 font-bold uppercase w-36 shrink-0 text-right pr-2">MAX F. ALLOW:</span>
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase w-36 shrink-0 text-right pr-2">MAX F. ALLOW:</span>
                                         <div className="flex items-center w-24 pr-8 shrink-0 justify-end">
                                             <span className={cn(
-                                                "text-xs font-mono font-bold whitespace-nowrap",
+                                                "text-xs md:text-sm font-mono font-bold whitespace-nowrap",
                                                 fuelExceedsMax ? "text-red-500 underline decoration-wavy" : "text-slate-400"
                                             )}>
                                                 {formatNumber(Math.floor(maxAllowableFuel))}
                                             </span>
                                         </div>
                                         <div className="flex items-center -ml-6">
-                                            <span className="text-[9px] font-bold text-aviation-warning shrink-0">
+                                            <span className="text-[10px] font-bold text-aviation-warning shrink-0">
                                                 ({limitingFactor})
                                             </span>
                                             {fuelExceedsMax && (
@@ -157,10 +157,10 @@ export const Performance: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center">
-                                        <span className="text-[9px] text-slate-500 font-bold uppercase w-36 shrink-0 text-right pr-2">Margin:</span>
+                                        <span className="text-[10px] text-slate-500 font-bold uppercase w-36 shrink-0 text-right pr-2">Margin:</span>
                                         <div className="w-24 pr-8 shrink-0 flex justify-end">
                                             <span className={cn(
-                                                "text-[10px] font-mono font-bold whitespace-nowrap",
+                                                "text-xs md:text-sm font-mono font-bold whitespace-nowrap",
                                                 (maxAllowableFuel - actualRampFuel) >= 0 ? "text-aviation-success" : "text-red-500"
                                             )}>
                                                 {(maxAllowableFuel - actualRampFuel) > 0 ? '+' : ''}{formatNumber(Math.floor(maxAllowableFuel - actualRampFuel))}
@@ -174,10 +174,10 @@ export const Performance: React.FC = () => {
                 </div>
 
                 {/* Weight Planning */}
-                <div className="glass-panel overflow-hidden flex flex-col min-h-0 w-full max-w-[460px]">
-                    <div className="px-3 py-1.5 md:px-4 md:py-2 bg-aviation-warning/5 border-b border-white/5 flex items-center gap-3 shrink-0">
-                        <Weight className="w-4 h-4 md:w-5 md:h-5 text-aviation-warning" />
-                        <h4 className="font-bold text-aviation-warning uppercase tracking-widest text-[10px] md:text-[11px]">Weight Planning (kg)</h4>
+                <div className="glass-panel !p-0 overflow-hidden flex flex-col min-h-0 w-full max-w-[460px]">
+                    <div className="px-1.5 py-1 bg-aviation-warning/5 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                        <Weight className="w-3 h-3 text-aviation-warning" />
+                        <h4 className="font-bold text-aviation-warning uppercase tracking-widest text-xs md:text-xs">Weight Planning (kg)</h4>
                     </div>
                     <div className="flex-1 p-4 md:p-5 flex flex-col overflow-y-auto custom-scrollbar">
                         <div className="flex flex-wrap gap-x-12 gap-y-4 pb-4">
@@ -187,7 +187,7 @@ export const Performance: React.FC = () => {
                                     <div className="flex flex-col gap-1">
                                         <PerformanceRow label="EZFW" value={flightData.ezfw} labelWidth="w-12" gap="gap-1" />
                                         <div className="flex items-center gap-1">
-                                            <span className="font-medium text-aviation-warning transition-colors uppercase tracking-tight shrink-0 text-base w-12">RZFW:</span>
+                                            <span className="font-medium text-aviation-warning transition-colors uppercase tracking-tight shrink-0 text-xs w-12">RZFW:</span>
                                             <div className="flex items-center">
                                                 <input
                                                     type="text"
@@ -195,11 +195,11 @@ export const Performance: React.FC = () => {
                                                     value={inflightData.revisedEzfw ? formatNumber(inflightData.revisedEzfw) : ''}
                                                     placeholder={formatNumber(ezfw)}
                                                     onChange={(e) => setInflightData({ revisedEzfw: e.target.value.replace(/\D/g, '') })}
-                                                    className="bg-black/40 border border-aviation-warning/20 rounded py-0.5 font-mono text-aviation-warning w-20 ml-4 text-right pr-4 text-base focus:outline-none focus:border-aviation-warning"
+                                                    className="bg-black/40 border border-aviation-warning/20 rounded py-0.5 font-mono text-aviation-warning w-24 text-right pr-4 text-sm md:text-base focus:outline-none focus:border-aviation-warning"
                                                 />
                                                 {inflightData.revisedEzfw && (
                                                     <span className={cn(
-                                                        "text-[10px] font-mono font-bold ml-2",
+                                                        "text-xs font-mono font-bold ml-2",
                                                         (actualEzfw - ezfw) >= 0 ? "text-aviation-warning" : "text-aviation-success"
                                                     )}>
                                                         {(actualEzfw - ezfw) >= 0 ? '+' : ''}{formatNumber(actualEzfw - ezfw)}
@@ -245,7 +245,7 @@ export const Performance: React.FC = () => {
                                         error={mtow - rTOW < 0}
                                     />
                                     {rTOW > mtow && (
-                                        <span className="text-[10px] text-aviation-warning font-bold uppercase tracking-tighter text-right">EXCEEDS MTOW!</span>
+                                        <span className="text-xs text-aviation-warning font-bold uppercase tracking-tighter text-right">EXCEEDS MTOW!</span>
                                     )}
                                 </div>
                             </div>
@@ -273,7 +273,7 @@ export const Performance: React.FC = () => {
                                         error={mlw - eLW < 0}
                                     />
                                     {eLW > mlw && (
-                                        <span className="text-[10px] text-aviation-warning font-bold uppercase tracking-tighter text-right">EXCEEDS MLW!</span>
+                                        <span className="text-xs text-aviation-warning font-bold uppercase tracking-tighter text-right">EXCEEDS MLW!</span>
                                     )}
                                 </div>
                             </div>
@@ -288,9 +288,9 @@ export const Performance: React.FC = () => {
                                     : "bg-aviation-success/10 border-aviation-success/20"
                             )}>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Tactical Summary</span>
+                                    <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Tactical Summary</span>
                                     <span className={cn(
-                                        "text-[10px] font-bold uppercase",
+                                        "text-xs font-bold uppercase",
                                         (rTOW > mtow || eLW > mlw || (mzfw - actualEzfw) < 0) ? "text-red-500" : "text-aviation-success"
                                     )}>
                                         {(rTOW > mtow || eLW > mlw || (mzfw - actualEzfw) < 0) ? "⚠️ Check Margins" : "✅ Performance Legal"}
@@ -337,7 +337,7 @@ function PerformanceRow({
     valuePadding = "pr-4",
     gap = "gap-2",
     inputWidth = "w-24",
-    textSize = "text-base",
+    textSize = "text-sm md:text-base",
     labelColor = "text-slate-500",
     valueColor = "text-slate-200"
 }: {
@@ -364,7 +364,7 @@ function PerformanceRow({
                 "font-medium group-hover:text-slate-400 transition-colors uppercase tracking-tight shrink-0",
                 labelColor,
                 labelWidth,
-                textSize
+                "text-xs",
             )}>{label}:</span>
             <div className="flex items-center">
                 {input ? (
@@ -392,7 +392,7 @@ function PerformanceRow({
                 )}
 
                 {formattedTime && (
-                    <span className={cn("font-mono font-bold text-slate-400", textSize)}>
+                    <span className={cn("font-mono font-bold text-slate-400 ms-1", textSize)}>
                         {formattedTime}
                     </span>
                 )}

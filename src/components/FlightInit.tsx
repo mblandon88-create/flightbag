@@ -65,8 +65,8 @@ export const FlightInit: React.FC = () => {
     return (
         <div className="flex-1 flex flex-col gap-4 md:gap-6 min-h-0">
             <section className="shrink-0">
-                <h3 className="text-lg md:text-xl font-bold text-white mb-0.5">Flight Initialization</h3>
-                <p className="text-slate-400 text-xs md:text-sm">Load your LIDO Flight Plan to automatically initialize the EFB.</p>
+                <h3 className="text-sm md:text-base font-bold text-white mb-0.5">Flight Initialization</h3>
+                <p className="text-slate-400 text-[10px] md:text-xs">Load your LIDO Flight Plan to automatically initialize the EFB.</p>
             </section>
 
             <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 min-h-0">
@@ -110,7 +110,7 @@ export const FlightInit: React.FC = () => {
                         <span className="text-[9px] text-slate-500 mt-1">Copy everything and click</span>
                     </div>
 
-                    {error && <p className="text-aviation-warning text-[10px] mt-2 text-center">{error}</p>}
+                    {error && <p className="text-aviation-warning text-xs mt-2 text-center">{error}</p>}
 
                     {flightData && (
                         <button
@@ -127,14 +127,14 @@ export const FlightInit: React.FC = () => {
                     <div className="md:col-span-3 glass-panel p-4 md:p-6 border-l-4 border-l-aviation-success flex flex-col min-h-0 animate-in fade-in slide-in-from-left-4 duration-300">
                         <div className="flex items-center gap-2 text-aviation-success mb-4 shrink-0">
                             <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" />
-                            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest">Data Loaded Successfully</span>
+                            <span className="text-xs md:text-xs font-bold uppercase tracking-widest">Data Loaded Successfully</span>
                         </div>
 
                         <div className="flex gap-4 mb-4 border-b border-white/5 pb-2 shrink-0">
                             <button
                                 onClick={() => setActiveDataTab('general')}
                                 className={cn(
-                                    "text-[10px] font-bold uppercase tracking-widest pb-1 transition-all relative",
+                                    "text-xs font-bold uppercase tracking-widest pb-1 transition-all relative",
                                     activeDataTab === 'general' ? "text-aviation-accent" : "text-slate-500 hover:text-slate-300"
                                 )}
                             >
@@ -144,7 +144,7 @@ export const FlightInit: React.FC = () => {
                             <button
                                 onClick={() => setActiveDataTab('route')}
                                 className={cn(
-                                    "text-[10px] font-bold uppercase tracking-widest pb-1 transition-all relative",
+                                    "text-xs font-bold uppercase tracking-widest pb-1 transition-all relative",
                                     activeDataTab === 'route' ? "text-aviation-accent" : "text-slate-500 hover:text-slate-300"
                                 )}
                             >
@@ -155,7 +155,7 @@ export const FlightInit: React.FC = () => {
                                 <button
                                     onClick={() => setActiveDataTab('remarks')}
                                     className={cn(
-                                        "text-[10px] font-bold uppercase tracking-widest pb-1 transition-all relative",
+                                        "text-xs font-bold uppercase tracking-widest pb-1 transition-all relative",
                                         activeDataTab === 'remarks' ? "text-aviation-accent" : "text-slate-500 hover:text-slate-300"
                                     )}
                                 >
@@ -258,7 +258,7 @@ export const FlightInit: React.FC = () => {
 function DataField({ label, value, highlight, warning }: { label: string, value: string, highlight?: boolean, warning?: boolean }) {
     return (
         <div className="flex flex-col">
-            <span className="data-label text-[9px] uppercase tracking-tighter text-slate-500 font-bold mb-0">{label}</span>
+            <span className="data-label text-xs uppercase tracking-tighter text-slate-500 font-bold mb-0">{label}</span>
             <p className={cn(
                 "text-sm font-bold font-mono leading-tight",
                 highlight ? "text-aviation-accent" : "text-slate-200",

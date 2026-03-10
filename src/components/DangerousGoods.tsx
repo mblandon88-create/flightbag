@@ -44,24 +44,24 @@ export const DangerousGoods: React.FC = () => {
         <div className="flex-1 flex flex-col gap-4 md:gap-6 min-h-0 relative">
             <section className="shrink-0 flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg md:text-xl font-bold text-white mb-0.5">DG Manifest</h3>
-                    <p className="text-slate-400 text-[10px] md:text-xs">Log required Notification to Captain items.</p>
+                    <h3 className="text-sm md:text-base font-bold text-white mb-0.5">DG Manifest</h3>
+                    <p className="text-slate-400 text-xs md:text-xs">Log required Notification to Captain items.</p>
                 </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-aviation-warning text-black font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 hover:bg-aviation-warning/80 transition-colors shadow-[0_0_15px_rgba(234,179,8,0.3)]"
+                    className="bg-aviation-warning text-black font-bold py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 hover:bg-aviation-warning/80 transition-colors shadow-lg text-xs md:text-xs uppercase tracking-widest"
                 >
-                    <Plus className="w-5 h-5" /> <span className="hidden sm:inline">Add DG Item</span>
+                    <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add DG Item</span>
                 </button>
             </section>
 
             <div className="flex-1 glass-panel flex flex-col overflow-hidden min-h-0">
                 <div className="px-6 py-4 bg-white/5 border-b border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <ShieldAlert className="w-4 h-4 text-slate-400" />
-                        <h4 className="font-bold text-white uppercase tracking-widest text-xs">Manifest</h4>
+                    <div className="flex items-center gap-1.5">
+                        <ShieldAlert className="w-3 h-3 text-slate-400" />
+                        <h4 className="font-bold text-white uppercase tracking-widest text-[10px] md:text-xs">Manifest</h4>
                     </div>
-                    <span className="text-[10px] font-bold text-slate-500 bg-white/5 px-2 py-1 rounded-full">{dgItems.length} ITEMS</span>
+                    <span className="text-xs font-bold text-slate-500 bg-white/5 px-2 py-1 rounded-full">{dgItems.length} ITEMS</span>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
@@ -109,9 +109,9 @@ export const DangerousGoods: React.FC = () => {
                             className="glass-panel w-full max-w-md relative z-10 overflow-hidden shadow-2xl border border-white/10"
                         >
                             <div className="px-6 py-4 bg-aviation-warning/10 border-b border-aviation-warning/20 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <BookOpen className="w-5 h-5 text-aviation-warning" />
-                                    <h4 className="font-bold text-aviation-warning uppercase tracking-widest text-sm">Add DG Item</h4>
+                                <div className="flex items-center gap-2">
+                                    <BookOpen className="w-4 h-4 text-aviation-warning" />
+                                    <h4 className="font-bold text-aviation-warning uppercase tracking-widest text-xs md:text-xs">Add DG Item</h4>
                                 </div>
                                 <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
                                     <X className="w-5 h-5" />
@@ -119,7 +119,7 @@ export const DangerousGoods: React.FC = () => {
                             </div>
                             <form onSubmit={handleAdd} className="p-6 space-y-5">
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Drill Number *</label>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Drill Number *</label>
                                     <select
                                         value={drillNo}
                                         onChange={e => setDrillNo(e.target.value)}
@@ -133,7 +133,7 @@ export const DangerousGoods: React.FC = () => {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Drill Letter (Optional)</label>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Drill Letter (Optional)</label>
                                     <input
                                         type="text"
                                         value={drillLetter}
@@ -142,7 +142,7 @@ export const DangerousGoods: React.FC = () => {
                                         maxLength={1}
                                         className="w-full bg-black/40 border border-white/10 focus:border-aviation-warning/50 rounded-lg p-3 text-sm text-white placeholder:text-slate-700 outline-none transition-colors font-mono uppercase"
                                     />
-                                    <p className="text-[10px] text-slate-500 px-1 mt-1">Single letter only (A, C, E, F, H, i, L, M, N, P, S, W, X, Y)</p>
+                                    <p className="text-xs text-slate-500 px-1 mt-1">Single letter only (A, C, E, F, H, i, L, M, N, P, S, W, X, Y)</p>
                                 </div>
 
                                 <div className="pt-2 flex gap-3">
@@ -211,10 +211,10 @@ function DGManifestItem({ item, drill, letterDef, remove }: DGManifestItemProps)
                     </div>
 
                     <div className="flex flex-col">
-                        <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Drill Identifier</span>
+                        <span className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Drill Identifier</span>
                         {/* Drill Letter Definition Tag in header if collapsed */}
                         {!isExpanded && letterDef ? (
-                            <span className="text-[10px] md:text-xs font-mono font-bold text-slate-300 truncate max-w-[150px] sm:max-w-none">
+                            <span className="text-xs md:text-xs font-mono font-bold text-slate-300 truncate max-w-[150px] sm:max-w-none">
                                 [{item.drillLetter}] {letterDef}
                             </span>
                         ) : (
@@ -255,7 +255,7 @@ function DGManifestItem({ item, drill, letterDef, remove }: DGManifestItemProps)
                             {/* Drill Letter Definition Tag */}
                             {letterDef && (
                                 <div className="flex items-center gap-2">
-                                    <span className="bg-aviation-accent/20 border border-aviation-accent/30 text-aviation-accent px-3 py-1.5 rounded-md text-[10px] md:text-xs font-mono font-bold shadow-sm">
+                                    <span className="bg-aviation-accent/20 border border-aviation-accent/30 text-aviation-accent px-3 py-1.5 rounded-md text-xs md:text-xs font-mono font-bold shadow-sm">
                                         [{item.drillLetter}] {letterDef}
                                     </span>
                                 </div>
@@ -294,7 +294,7 @@ function InfoBlock({ label, value, highlight }: { label: string, value: string, 
     if (!value) return null;
     return (
         <div className="space-y-0.5">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{label}</span>
             <p className={`text-sm ${highlight ? 'text-white font-medium' : 'text-slate-300'}`}>
                 {value}
             </p>

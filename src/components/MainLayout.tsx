@@ -11,7 +11,8 @@ import {
     MapPin,
     ThermometerSnowflake,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Book
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -49,6 +50,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
         { id: 'cold-weather', label: 'Cold Wx', icon: ThermometerSnowflake },
         { id: 'pa-guide', label: 'PA Guide', icon: Mic2 },
         { id: 'inflight-rest', label: 'Inflight Rest', icon: Bed },
+        { id: 'manual', label: 'Manual', icon: Book },
         { id: 'about', label: 'About', icon: Info },
     ];
 
@@ -189,7 +191,7 @@ export function MainLayout({ children, activeSection, onSectionChange, route = '
                 </header>
 
                 {/* Content Area */}
-                <div className="flex-1 min-h-0 p-3 md:p-6 lg:p-8 flex flex-col pb-[env(safe-area-inset-bottom)]">
+                <div className="flex-1 min-h-0 p-2 md:p-3 lg:p-6 flex flex-col pb-[env(safe-area-inset-bottom)]">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={activeSection}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, ShieldAlert, Cpu, Rocket, BookOpen, ClipboardCopy, Star } from 'lucide-react';
+import { Info, ShieldAlert, Cpu, Rocket, BookOpen, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const About: React.FC = () => {
@@ -12,43 +12,60 @@ export const About: React.FC = () => {
     ];
 
     const roadmap = [
-        { title: 'PA Guide Evaluation', status: 'Planned', desc: 'Evaluating if the Public Address (PA) guide should be refined or removed.' },
+        { title: 'User Manual', status: 'In Progress', desc: 'Expanding and refining operational documentation and safety logic.' },
+        { title: 'Dynamic Waypoints', status: 'Planned', desc: 'Implementing a way to add and remove waypoints in the enroute tab to handle tactical re-routes.' },
         { title: 'PDF Integration', status: 'Completed', desc: 'Robust dual-channel data extraction from LIDO flight plans (PDF/Clipboard).' },
     ];
 
-    const bookmarkletCode = "javascript:(function(){let t='';document.querySelectorAll('iframe').forEach(f=>{try{t+=f.contentDocument.body.innerText+'\\n'}catch(e){}});if(!t.trim())t=document.body.innerText;navigator.clipboard.writeText(t).then(()=>alert('OFP Copied! Now paste into EFB.')).catch(()=>alert('Copy failed.'))})();";
+    const buildInfo = {
+        version: "v1.5.3",
+        buildDate: "10 MAR 2026 23:45 UTC",
+        revision: "ui-manual-wording-fix"
+    };
 
     return (
         <div className="h-full flex flex-col pt-4 overflow-hidden">
             {/* Header */}
-            <section className="px-2 mb-6 shrink-0 max-w-3xl ml-0">
-                <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
-                    <Info className="w-6 h-6 text-aviation-accent" />
+            <section className="mb-4 shrink-0 max-w-3xl ml-0">
+                <h3 className="text-sm md:text-base font-bold text-white">
                     About eFlightBag
                 </h3>
             </section>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-8 space-y-6">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pb-8 space-y-6">
                 {/* Operational Disclaimer - CRITICAL */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="glass-panel p-4 md:p-6 border-red-500/30 bg-red-500/5 max-w-3xl ml-0"
+                    className="glass-panel !p-0 overflow-hidden border-red-500/30 bg-red-500/5 max-w-3xl ml-0"
                 >
-                    <div className="flex items-start gap-4">
-                        <div className="bg-red-500/20 p-2 rounded-lg shrink-0">
-                            <ShieldAlert className="w-6 h-6 text-red-500" />
-                        </div>
-                        <div>
-                            <h4 className="text-red-500 font-bold uppercase tracking-wider text-sm mb-1">Operational Disclaimer</h4>
-                            <p className="text-red-400 font-bold text-base md:text-lg leading-tight">
-                                NOT FOR OPERATIONAL USE. FOR EDUCATIONAL PURPOSES ONLY.
-                            </p>
-                            <p className="text-slate-400 text-xs mt-2 italic">
-                                This application is a technology demonstration and should never be used for actual flight planning or navigation. Always refer to official documentation and approved EFB tools.
-                            </p>
-                        </div>
+                    <div className="px-1.5 py-1 bg-red-500/10 border-b border-red-500/20 flex items-center gap-1.5 shrink-0">
+                        <ShieldAlert className="w-3 h-3 text-red-500" />
+                        <h4 className="font-bold text-red-500 uppercase tracking-widest text-[10px] md:text-[11px]">Operational Disclaimer</h4>
+                    </div>
+                    <div className="p-4 md:p-6">
+                        <p className="text-red-400 font-bold text-base md:text-lg leading-tight">
+                            NOT FOR OPERATIONAL USE. FOR EDUCATIONAL PURPOSES ONLY.
+                        </p>
+                        <p className="text-slate-400 text-xs mt-2 italic">
+                            This application is a technology demonstration and should never be used for actual flight planning or navigation. Always refer to official documentation and approved EFB tools.
+                        </p>
+                        <p className="text-red-400 font-bold text-xs mt-2 uppercase tracking-wide">
+                            CRITICAL: ALWAYS REFER TO THE ORIGINAL OPERATIONAL FLIGHT PLAN (OFP).
+                        </p>
+                        <p className="text-red-400/90 font-bold text-[10px] mt-2 uppercase">
+                            USER RESPONSIBILITY: ALL MANUALLY ENTERED OR PARSED DATA MUST BE CROSS-CHECKED WITH THE OFFICIAL OFP.
+                        </p>
+                        <p className="text-slate-400 font-bold text-[10px] mt-2 uppercase">
+                            NON-CERTIFIED TOOL: THIRD-PARTY SOFTWARE NOT APPROVED FOR PRIMARY NAVIGATION OR PERFORMANCE DISPATCH.
+                        </p>
+                        <p className="text-aviation-accent font-bold text-[10px] mt-2 uppercase tracking-wide border-t border-white/5 pt-2">
+                            Compatibility: This application is specifically designed to work with LIDO flight plans only.
+                        </p>
+                        <p className="text-red-400/80 text-[10px] font-bold uppercase tracking-wider mt-2 pl-3 border-l-2 border-red-500/30">
+                            Notice: Due to API access limitations, the automated "Copy for EFB" or "Download the flight plan" functions are not currently supported.
+                        </p>
                     </div>
                 </motion.div>
 
@@ -57,94 +74,36 @@ export const About: React.FC = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="glass-panel p-4 md:p-6 border-aviation-warning/30 bg-aviation-warning/5 max-w-3xl ml-0"
+                    className="glass-panel !p-0 overflow-hidden border-aviation-warning/30 bg-aviation-warning/5 max-w-3xl ml-0"
                 >
-                    <div className="flex items-start gap-4">
-                        <div className="bg-aviation-warning/20 p-2 rounded-lg shrink-0">
-                            <ShieldAlert className="w-6 h-6 text-aviation-warning" />
-                        </div>
-                        <div>
-                            <h4 className="text-aviation-warning font-bold uppercase tracking-wider text-sm mb-1">Data Precision & Safety</h4>
-                            <p className="text-slate-200 font-bold text-sm md:text-base leading-tight">
-                                Conservative Calculation Model
-                            </p>
-                            <p className="text-slate-400 text-xs mt-2 leading-relaxed">
-                                To ensure a safe operational margin, <strong className="text-aviation-warning">Ramp Fuel</strong> and all <strong className="text-aviation-warning">Weights</strong> (MTOW, MZFW, EZFW, etc.) are always rounded <strong className="text-aviation-warning">UP</strong> to the nearest 100kg. Individual fuel components like Trip Fuel remain precise for accurate monitoring.
-                            </p>
-                        </div>
+                    <div className="px-1.5 py-1 bg-aviation-warning/10 border-b border-aviation-warning/20 flex items-center gap-1.5 shrink-0">
+                        <ShieldAlert className="w-3 h-3 text-aviation-warning" />
+                        <h4 className="font-bold text-aviation-warning uppercase tracking-widest text-[10px] md:text-[11px]">Data Precision & Safety</h4>
+                    </div>
+                    <div className="p-4 md:p-6">
+                        <p className="text-slate-200 font-bold text-[9px] md:text-[10px] md:text-base leading-tight">
+                            Conservative Calculation Model
+                        </p>
+                        <p className="text-slate-400 text-xs mt-2 leading-relaxed">
+                            To ensure a safe operational margin, <strong className="text-aviation-warning">Ramp Fuel</strong> and all <strong className="text-aviation-warning">Weights</strong> (MTOW, MZFW, EZFW, etc.) are always rounded <strong className="text-aviation-warning">UP</strong> to the nearest 100kg. Individual fuel components like Trip Fuel remain precise for accurate monitoring.
+                        </p>
                     </div>
                 </motion.div>
 
-                {/* Ingestion Tools - Help for Safari */}
-                <div className="glass-panel overflow-hidden max-w-3xl ml-0 border-aviation-accent/20">
-                    <div className="px-4 py-3 md:px-6 md:py-4 bg-aviation-accent/10 border-b border-white/5 flex items-center gap-3 shrink-0">
-                        <ClipboardCopy className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
-                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Safari Ingestion Masterclass</h4>
-                    </div>
-                    <div className="p-4 md:p-6 space-y-6">
-                        <div className="space-y-4">
-                            <h5 className="text-sm font-bold text-white uppercase flex items-center gap-2">
-                                <Star className="w-4 h-4 text-aviation-warning" />
-                                The "Copy for EFB" Bookmarklet
-                            </h5>
-                            <p className="text-[11px] text-slate-400 leading-relaxed">
-                                Since Safari on iPad restricts "Select All" on the Lido portal, we use a **Bookmarklet**.
-                                This is a specialized bookmark that runs a script to grab your flight plan instantly.
-                            </p>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-5 h-5 rounded-full bg-aviation-accent/20 flex items-center justify-center text-[10px] font-bold text-aviation-accent">1</div>
-                                        <h6 className="text-[10px] font-bold text-slate-300 uppercase">Save a Bookmark</h6>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 leading-tight">Open any page in Safari (like Google) and tap the <strong>Share</strong> icon, then <strong>Add Bookmark</strong>.</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-5 h-5 rounded-full bg-aviation-accent/20 flex items-center justify-center text-[10px] font-bold text-aviation-accent">2</div>
-                                        <h6 className="text-[10px] font-bold text-slate-300 uppercase">Edit & Paste code</h6>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 leading-tight">Open your bookmarks, tap <strong>Edit</strong>, change the name to <strong>Copy for EFB</strong>, and paste the code below into the URL field.</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-5 h-5 rounded-full bg-aviation-accent/20 flex items-center justify-center text-[10px] font-bold text-aviation-accent">3</div>
-                                        <h6 className="text-[10px] font-bold text-slate-300 uppercase">Use at Lido</h6>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 leading-tight">On the Lido flight plan page, simply open your bookmarks and tap <strong>Copy for EFB</strong>. Done!</p>
-                                </div>
-                            </div>
-
-                            <div className="relative group">
-                                <div className="bg-black/40 p-4 rounded-lg border border-white/10 font-mono text-[10px] text-aviation-accent break-all leading-tight">
-                                    {bookmarkletCode}
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(bookmarkletCode);
-                                        alert('Bookmarklet code copied to clipboard!');
-                                    }}
-                                    className="absolute top-2 right-2 p-2 bg-aviation-accent/20 hover:bg-aviation-accent/40 rounded border border-aviation-accent/30 text-aviation-accent transition-colors flex items-center gap-2"
-                                >
-                                    <ClipboardCopy size={14} />
-                                    <span className="text-[10px] font-bold uppercase tracking-widest">Copy Code</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 {/* App Description */}
-                <div className="glass-panel overflow-hidden max-w-3xl ml-0">
-                    <div className="px-4 py-3 md:px-6 md:py-4 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-3 shrink-0">
-                        <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
-                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Application Overview</h4>
+                <div className="glass-panel !p-0 overflow-hidden max-w-3xl ml-0">
+                    <div className="px-1.5 py-1 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                        <BookOpen className="w-3 h-3 text-aviation-accent" />
+                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[10px] md:text-[11px]">Application Overview</h4>
                     </div>
                     <div className="p-4 md:p-6 space-y-4">
-                        <p className="text-slate-300 text-sm leading-relaxed">
-                            eFlightBag is a modern, offline-capable Electronic Flight Bag (EFB) companion designed to streamline pilot workflows. It provides a centralized dashboard for performance calculations, cold weather corrections, and tactical inflight monitoring.
+                        <p className="text-slate-300 text-[9px] md:text-[10px] leading-relaxed">
+                            eFlightBag is a modern, offline-capable Electronic Flight Bag (EFB) companion designed to streamline pilot workflows. It provides a centralized dashboard for performance calculations, cold weather corrections, and tactical inflight monitoring. See the <strong>Manual</strong> tab for detailed operational logic.
                         </p>
+                        <p className="text-aviation-accent/80 text-[10px] font-bold uppercase tracking-wider border-l-2 border-aviation-accent/30 pl-3 py-1 bg-aviation-accent/5 rounded-r-md">
+                            Optimization Note: The interface has been meticulously tuned for high information density on small screens (iPad), ensuring critical data remains legible and accessible in a compact aviation environment.
+                        </p>
+
                         <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {[
                                 'Performance & Fuel Planning',
@@ -165,10 +124,10 @@ export const About: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl ml-0">
                     {/* Tech Stack */}
-                    <div className="glass-panel overflow-hidden h-full">
-                        <div className="px-4 py-3 md:px-6 md:py-4 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-3 shrink-0">
-                            <Cpu className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
-                            <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Technology Stack</h4>
+                    <div className="glass-panel !p-0 overflow-hidden h-full">
+                        <div className="px-1.5 py-1 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                            <Cpu className="w-3 h-3 text-aviation-accent" />
+                            <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[10px] md:text-[11px]">Technology Stack</h4>
                         </div>
                         <div className="p-4 space-y-3">
                             {techStack.map((tech, i) => (
@@ -181,15 +140,15 @@ export const About: React.FC = () => {
                     </div>
 
                     {/* Build Info */}
-                    <div className="glass-panel overflow-hidden h-full">
-                        <div className="px-4 py-3 md:px-6 md:py-4 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-3 shrink-0">
-                            <Info className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
-                            <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Build Information</h4>
+                    <div className="glass-panel !p-0 overflow-hidden h-full">
+                        <div className="px-1.5 py-1 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                            <Info className="w-3 h-3 text-aviation-accent" />
+                            <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[10px] md:text-[11px]">Build Information</h4>
                         </div>
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col gap-1">
                                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Version</span>
-                                <span className="text-xl font-mono font-bold text-white">v1.3.0</span>
+                                <span className="text-xl font-mono font-bold text-white">{buildInfo.version}</span>
                             </div>
                             <div className="flex flex-col gap-1">
                                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Environment</span>
@@ -197,19 +156,52 @@ export const About: React.FC = () => {
                             </div>
                             <div className="pt-2 border-t border-white/5">
                                 <p className="text-[10px] text-slate-500 leading-tight">
-                                    Build: 2026.03.10.0515<br />
-                                    Branch: master / revision: dual-parser-initial
+                                    Build: {buildInfo.buildDate}<br />
+                                    Branch: master / revision: {buildInfo.revision}
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Roadmap */}
-                <div className="glass-panel overflow-hidden max-w-3xl ml-0">
-                    <div className="px-4 py-3 md:px-6 md:py-4 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-3 shrink-0">
-                        <Rocket className="w-4 h-4 md:w-5 md:h-5 text-aviation-accent" />
-                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Project Roadmap</h4>
+
+                {/* Feedback & Support */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                    className="glass-panel !p-0 overflow-hidden max-w-3xl ml-0 border-aviation-accent/20"
+                >
+                    <div className="px-1.5 py-1 bg-aviation-accent/10 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                        <Mail className="w-3 h-3 text-aviation-accent" />
+                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[10px] md:text-[11px]">Feedback & Support</h4>
+                    </div>
+                    <div className="p-4 md:p-6 flex items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <p className="text-slate-300 text-[10px] md:text-[11px] leading-tight">
+                                Have suggestions or found a bug? Your feedback helps improve the eFlightBag experience.
+                            </p>
+                            <p className="text-aviation-accent font-mono text-[11px] md:text-xs font-bold py-1">
+                                eAviation.projects@proton.me
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                window.location.href = "mailto:eAviation.projects@proton.me";
+                            }}
+                            className="shrink-0 p-2 bg-aviation-accent/10 hover:bg-aviation-accent/20 rounded-lg border border-aviation-accent/20 text-aviation-accent transition-all flex items-center gap-2 group"
+                        >
+                            <Mail size={16} className="group-hover:scale-110 transition-transform" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest hidden md:inline">Contact Us</span>
+                        </button>
+                    </div>
+                </motion.div>
+
+                {/* Roadmap status */}
+                <div className="glass-panel !p-0 overflow-hidden max-w-3xl ml-0">
+                    <div className="px-1.5 py-1 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                        <Rocket className="w-3 h-3 text-aviation-accent" />
+                        <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[10px] md:text-[11px]">Project Roadmap</h4>
                     </div>
                     <div className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                         {roadmap.map((item, i) => (

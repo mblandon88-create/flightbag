@@ -204,63 +204,61 @@ export function ColdWeather() {
     const statMsg = getStatusMessage();
 
     return (
-        <div className="h-full flex flex-col pt-4 overflow-hidden">
-            {/* Header */}
-            <section className="px-2 mb-6 shrink-0 max-w-3xl ml-0">
-                <h3 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
-                    <ThermometerSnowflake className="w-6 h-6 text-aviation-accent" />
-                    Cold Weather Corrections
-                </h3>
-            </section>
+        <div className="h-full flex flex-col pt-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-0.5 pb-8 space-y-1.5">
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-8 space-y-6">
+                {/* Inline Header */}
+                <div className="flex items-center gap-2 shrink-0 mb-3">
+                    <ThermometerSnowflake className="w-4 h-4 text-aviation-accent" />
+                    <h3 className="text-sm md:text-base font-bold text-white">Cold Weather Corrections</h3>
+                </div>
 
                 {/* Top Controls Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 relative z-20">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-1.5 relative z-20">
                     {/* Aerodrome Inputs */}
-                    <div className="col-span-1 md:col-span-4 glass-panel overflow-hidden flex flex-col h-fit">
-                        <div className="px-4 py-3 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-3 shrink-0">
-                            <MapPin className="w-4 h-4 text-aviation-accent" />
-                            <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Aerodrome Conditions</h4>
+                    <div className="col-span-1 md:col-span-5 glass-panel !p-0 overflow-hidden flex flex-col h-fit">
+                        <div className="px-1.5 py-1 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                            <MapPin className="w-3 h-3 text-aviation-accent" />
+                            <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[10px] md:text-[11px] leading-4">Aerodrome Conditions</h4>
                         </div>
-                        <div className="p-5 space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-400 mb-1">Elevation (ft)</label>
-                                <input
-                                    type="number"
-                                    value={elevation}
-                                    onChange={(e) => setElevation(e.target.value)}
-                                    placeholder="e.g. 1000"
-                                    className="w-full max-w-[120px] bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white font-mono focus:outline-none focus:border-aviation-accent transition-colors"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                        <div className="p-1">
+                            <div className="grid grid-cols-3 gap-2">
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-400 mb-1">Temp (°C)</label>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-0.5">Elev (ft)</label>
+                                    <input
+                                        type="number"
+                                        value={elevation}
+                                        onChange={(e) => setElevation(e.target.value)}
+                                        placeholder="1000"
+                                        className="w-full bg-black/40 border border-white/10 rounded-md px-2 py-1 text-sm text-white font-mono focus:outline-none focus:border-aviation-accent transition-colors"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-0.5">Temp (°C)</label>
                                     <input
                                         type="number"
                                         value={temperature}
                                         onChange={(e) => setTemperature(e.target.value)}
-                                        placeholder="e.g. -10"
-                                        className="w-full max-w-[100px] bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white font-mono focus:outline-none focus:border-aviation-accent transition-colors"
+                                        placeholder="-10"
+                                        className="w-full bg-black/40 border border-white/10 rounded-md px-2 py-1 text-sm text-white font-mono focus:outline-none focus:border-aviation-accent transition-colors"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-400 mb-1">MSA</label>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-0.5">MSA</label>
                                     <input
                                         type="number"
                                         value={msa}
                                         onChange={(e) => setMsa(e.target.value)}
-                                        placeholder="e.g. 4000"
-                                        className="w-full max-w-[120px] bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white font-mono focus:outline-none focus:border-aviation-accent transition-colors"
+                                        placeholder="4000"
+                                        className="w-full bg-black/40 border border-white/10 rounded-md px-2 py-1 text-sm text-white font-mono focus:outline-none focus:border-aviation-accent transition-colors"
                                         title="If published altitude is at or above corrected MSA, no correction will be applied to it (excluding DA/MDA)."
                                     />
                                 </div>
                             </div>
                             {msa && !isNaN(parseInt(msa)) && !isNaN(parseInt(elevation)) && !isNaN(parseInt(temperature)) && (
-                                <div className="bg-black/20 rounded-lg border border-white/5 p-3 flex items-center justify-between">
-                                    <span className="text-xs font-semibold text-slate-400">Corrected MSA:</span>
-                                    <span className="text-sm font-mono font-bold text-aviation-accent">
+                                <div className="mt-2 bg-black/20 rounded-md border border-white/5 px-2 py-1 flex items-center justify-between">
+                                    <span className="text-[9px] font-semibold text-slate-400">Corrected MSA:</span>
+                                    <span className="text-xs font-mono font-bold text-aviation-accent">
                                         {Math.ceil((parseInt(msa) + calculateCorrection(parseInt(msa), parseInt(elevation), parseInt(temperature))) / 10) * 10}
                                     </span>
                                 </div>
@@ -269,55 +267,55 @@ export function ColdWeather() {
                     </div>
 
                     {/* Approach Type */}
-                    <div className="col-span-1 md:col-span-8 glass-panel overflow-hidden flex flex-col max-w-[420px]">
-                        <div className="px-4 py-3 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-3 shrink-0">
-                            <Plane className="w-4 h-4 text-aviation-accent" />
-                            <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[11px] md:text-xs">Approach Type</h4>
+                    <div className="col-span-1 md:col-span-7 glass-panel !p-0 overflow-hidden flex flex-col">
+                        <div className="px-1.5 py-1 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                            <Plane className="w-3 h-3 text-aviation-accent" />
+                            <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-xs md:text-xs">Approach Type</h4>
                         </div>
-                        <div className="p-5">
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 max-w-[380px]">
+                        <div className="p-1">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 mb-2">
                                 <button
                                     onClick={() => setApproachCategory('ILS')}
-                                    className={cn("px-2 py-2 rounded-lg border font-semibold text-[10px] leading-tight text-center transition-all", approachCategory === 'ILS' ? "bg-aviation-accent/20 border-aviation-accent text-white" : "bg-black/40 border-white/10 text-slate-400 hover:bg-white/5")}
+                                    className={cn("px-1.5 py-1.5 rounded-md border font-semibold text-xs leading-snug text-center transition-all", approachCategory === 'ILS' ? "bg-aviation-accent/20 border-aviation-accent text-white" : "bg-black/40 border-white/10 text-slate-400 hover:bg-white/5")}
                                 >
-                                    ILS / GLS /<br />RNP to LPV
+                                    ILS/GLS/LPV
                                 </button>
                                 <button
                                     onClick={() => setApproachCategory('NON_PRECISION')}
-                                    className={cn("px-2 py-2 rounded-lg border font-semibold text-[10px] leading-tight text-center transition-all", approachCategory === 'NON_PRECISION' ? "bg-aviation-accent/20 border-aviation-accent text-white" : "bg-black/40 border-white/10 text-slate-400 hover:bg-white/5")}
+                                    className={cn("px-1.5 py-1.5 rounded-md border font-semibold text-xs leading-snug text-center transition-all", approachCategory === 'NON_PRECISION' ? "bg-aviation-accent/20 border-aviation-accent text-white" : "bg-black/40 border-white/10 text-slate-400 hover:bg-white/5")}
                                 >
-                                    LOC / LDA /<br />VOR / NDB
+                                    LOC/VOR/NDB
                                 </button>
                                 <button
                                     onClick={() => setApproachCategory('RNAV_GPS')}
-                                    className={cn("px-2 py-2 rounded-lg border font-semibold text-[10px] leading-tight text-center transition-all", approachCategory === 'RNAV_GPS' ? "bg-aviation-accent/20 border-aviation-accent text-white" : "bg-black/40 border-white/10 text-slate-400 hover:bg-white/5")}
+                                    className={cn("px-1.5 py-1.5 rounded-md border font-semibold text-xs leading-snug text-center transition-all", approachCategory === 'RNAV_GPS' ? "bg-aviation-accent/20 border-aviation-accent text-white" : "bg-black/40 border-white/10 text-slate-400 hover:bg-white/5")}
                                 >
-                                    RNAV (GPS) /<br />RNP
+                                    RNAV/RNP
                                 </button>
                                 <button
                                     onClick={() => setApproachCategory('RNP_AR')}
-                                    className={cn("px-2 py-2 rounded-lg border font-semibold text-[10px] leading-tight text-center transition-all", approachCategory === 'RNP_AR' ? "bg-aviation-accent/20 border-aviation-accent text-white" : "bg-black/40 border-white/10 text-slate-400 hover:bg-white/5")}
+                                    className={cn("px-1.5 py-1.5 rounded-md border font-semibold text-xs leading-snug text-center transition-all", approachCategory === 'RNP_AR' ? "bg-aviation-accent/20 border-aviation-accent text-white" : "bg-black/40 border-white/10 text-slate-400 hover:bg-white/5")}
                                 >
-                                    RNP (AR) /<br />RNAV (RNP)
+                                    RNP (AR)
                                 </button>
                             </div>
 
                             {/* Sub Options */}
-                            <div className="bg-black/20 p-3 rounded-xl border border-white/5 min-h-[70px] flex items-center max-w-md">
+                            <div className="bg-black/20 p-1.5 rounded-lg border border-white/5 flex items-center">
                                 <AnimatePresence mode="wait">
                                     {approachCategory === 'ILS' && (
                                         <motion.div key="ils" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full">
-                                            <label className="block text-xs font-semibold text-slate-400 mb-2">Category / Minima</label>
+                                            <label className="block text-xs font-semibold text-slate-400 mb-1">Category / Minima</label>
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => setIlsCategory('CAT_I')}
-                                                    className={cn("flex-1 py-1.5 rounded-lg border font-medium text-xs transition-all", ilsCategory === 'CAT_I' ? "bg-white/10 border-white/30 text-white shadow-sm" : "bg-black/40 border-white/5 text-slate-500")}
+                                                    className={cn("flex-1 py-1 rounded-md border font-medium text-xs transition-all", ilsCategory === 'CAT_I' ? "bg-white/10 border-white/30 text-white shadow-sm" : "bg-black/40 border-white/5 text-slate-500")}
                                                 >
                                                     CAT I / LPV
                                                 </button>
                                                 <button
                                                     onClick={() => setIlsCategory('CAT_II_III')}
-                                                    className={cn("flex-1 py-1.5 rounded-lg border font-medium text-xs transition-all", ilsCategory === 'CAT_II_III' ? "bg-white/10 border-white/30 text-white shadow-sm" : "bg-black/40 border-white/5 text-slate-500")}
+                                                    className={cn("flex-1 py-1 rounded-md border font-medium text-xs transition-all", ilsCategory === 'CAT_II_III' ? "bg-white/10 border-white/30 text-white shadow-sm" : "bg-black/40 border-white/5 text-slate-500")}
                                                 >
                                                     CAT II / CAT III
                                                 </button>
@@ -325,24 +323,24 @@ export function ColdWeather() {
                                         </motion.div>
                                     )}
                                     {approachCategory === 'NON_PRECISION' && (
-                                        <motion.div key="np" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full text-sm font-medium text-slate-400 italic">
-                                            Apply corrections to all procedure altitudes.<br />
-                                            <span className="text-xs text-slate-500">(Note: If flying using FLS, no temperature correction is required.)</span>
+                                        <motion.div key="np" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full text-xs font-medium text-slate-400 italic">
+                                            Apply corrections to all procedure altitudes.
+                                            <span className="text-xs text-slate-500 ml-1">(FLS: no correction req'd)</span>
                                         </motion.div>
                                     )}
                                     {(approachCategory === 'RNAV_GPS' || approachCategory === 'RNP_AR') && (
-                                        <motion.div key="rnav" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full flex items-center justify-between gap-4">
-                                            <label className="block text-xs font-semibold text-slate-400 mb-0 w-[150px]">Airport Temp Within Charted Temp?</label>
+                                        <motion.div key="rnav" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full flex items-center justify-between gap-3">
+                                            <label className="block text-xs font-semibold text-slate-400 mb-0 w-[140px]">Airport Temp Within Charted Temp?</label>
                                             <div className="flex gap-2 flex-1">
                                                 <button
                                                     onClick={() => setChartedTemp('YES')}
-                                                    className={cn("flex-1 py-1.5 rounded-lg border font-medium text-xs transition-all", chartedTemp === 'YES' ? "bg-aviation-success/20 border-aviation-success/50 text-aviation-success shadow-sm" : "bg-black/40 border-white/5 text-slate-500")}
+                                                    className={cn("flex-1 py-1 rounded-md border font-medium text-xs transition-all", chartedTemp === 'YES' ? "bg-aviation-success/20 border-aviation-success/50 text-aviation-success shadow-sm" : "bg-black/40 border-white/5 text-slate-500")}
                                                 >
                                                     YES
                                                 </button>
                                                 <button
                                                     onClick={() => setChartedTemp('NO')}
-                                                    className={cn("flex-1 py-1.5 rounded-lg border font-medium text-xs transition-all", chartedTemp === 'NO' ? "bg-red-500/20 border-red-500/50 text-red-400 shadow-sm" : "bg-black/40 border-white/5 text-slate-500")}
+                                                    className={cn("flex-1 py-1 rounded-md border font-medium text-xs transition-all", chartedTemp === 'NO' ? "bg-red-500/20 border-red-500/50 text-red-400 shadow-sm" : "bg-black/40 border-white/5 text-slate-500")}
                                                 >
                                                     NO
                                                 </button>
@@ -360,32 +358,32 @@ export function ColdWeather() {
                     {statMsg && (
                         <motion.div
                             initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                            animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                            animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
                             exit={{ opacity: 0, height: 0, marginTop: 0 }}
                             className={cn(
-                                "rounded-xl p-4 border flex items-start gap-3 shadow-lg whitespace-pre-wrap overflow-hidden max-w-3xl ml-0",
+                                "rounded-lg px-2 py-1.5 border flex items-start gap-2 shadow-lg whitespace-pre-wrap overflow-hidden max-w-3xl ml-0",
                                 statMsg.type === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
                                     statMsg.type === 'success' ? 'bg-aviation-success/10 border-aviation-success/30 text-aviation-success' :
                                         'bg-blue-500/10 border-blue-500/30 text-blue-300'
                             )}
                         >
-                            {statMsg.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" /> :
-                                statMsg.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" /> :
-                                    <Info className="w-5 h-5 shrink-0 mt-0.5" />
+                            {statMsg.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> :
+                                statMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> :
+                                    <Info className="w-4 h-4 shrink-0 mt-0.5" />
                             }
-                            <div className="text-sm font-semibold">{statMsg.text}</div>
+                            <div className="text-xs font-semibold">{statMsg.text}</div>
                         </motion.div>
                     )}
 
                     {isWarningNote1Applicable() && (
                         <motion.div
                             initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                            animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                            animate={{ opacity: 1, height: 'auto', marginTop: 8 }}
                             exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                            className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 rounded-xl p-4 flex items-start gap-3 shadow-lg overflow-hidden max-w-3xl ml-0"
+                            className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 rounded-lg px-2 py-1.5 flex items-start gap-2 shadow-lg overflow-hidden max-w-3xl ml-0"
                         >
-                            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div className="text-sm">
+                            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                            <div className="text-xs">
                                 <span className="font-bold">NOTE 1:</span> {getNote1WarningText()}
                             </div>
                         </motion.div>
@@ -393,37 +391,37 @@ export function ColdWeather() {
                 </AnimatePresence>
 
                 {/* Correction Tables Tabs */}
-                <div className="mt-8 glass-panel shadow-xl overflow-hidden mb-20 max-w-3xl ml-0">
+                <div className="mt-1 glass-panel !p-0 shadow-xl overflow-hidden mb-20 max-w-3xl ml-0">
                     {/* Tab Headers */}
                     <div className="flex border-b border-white/10 bg-black/20">
                         <button
                             onClick={() => setActiveTableTab('procedure')}
                             className={cn(
-                                "flex-1 py-3 px-6 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2",
+                                "flex-1 py-1.5 px-3 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5",
                                 activeTableTab === 'procedure'
                                     ? "bg-aviation-accent/10 text-white border-b-2 border-aviation-accent"
                                     : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
                             )}
                         >
-                            <Activity className="w-4 h-4" />
+                            <Activity className="w-3 h-3" />
                             PROCEDURE
                         </button>
                         <button
                             onClick={() => setActiveTableTab('stepdown')}
                             className={cn(
-                                "flex-1 py-3 px-6 text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2",
+                                "flex-1 py-1.5 px-3 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5",
                                 activeTableTab === 'stepdown'
                                     ? "bg-aviation-accent/10 text-white border-b-2 border-aviation-accent"
                                     : "text-slate-500 hover:text-slate-300 hover:bg-white/5"
                             )}
                         >
-                            <Ruler className="w-4 h-4" />
+                            <Ruler className="w-3 h-3" />
                             STEP-DOWN
                         </button>
                     </div>
 
                     {/* Tab Content */}
-                    <div className="p-5">
+                    <div className="p-1">
                         <AnimatePresence mode="wait">
                             {activeTableTab === 'procedure' ? (
                                 <motion.div
@@ -433,19 +431,18 @@ export function ColdWeather() {
                                     exit={{ opacity: 0, x: 10 }}
                                     transition={{ duration: 0.2 }}
                                 >
-                                    <div className="flex justify-end mb-4">
-                                        <button onClick={addFix} className="flex items-center gap-1.5 px-3 py-1.5 bg-aviation-accent/10 hover:bg-aviation-accent/20 text-aviation-accent rounded-lg border border-aviation-accent/30 text-xs font-bold transition-colors">
-                                            <Plus className="w-3.5 h-3.5" />
-                                            ADD FIX
-                                        </button>
-                                    </div>
 
-                                    <div className="space-y-3">
-                                        <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-500 uppercase px-2">
+                                    <div className="space-y-1.5">
+                                        <div className="grid grid-cols-12 gap-1 text-[9px] font-bold text-slate-500 uppercase px-1 items-center">
                                             <div className="col-span-4">Fix Name</div>
                                             <div className="col-span-3 text-center">Published</div>
                                             <div className="col-span-3 text-aviation-accent text-center">Corrected</div>
-                                            <div className="col-span-2 text-center">Type</div>
+                                            <div className="col-span-1 text-center">Type</div>
+                                            <div className="col-span-1 flex justify-end">
+                                                <button onClick={addFix} className="flex items-center gap-0.5 px-1.5 py-0.5 bg-aviation-accent/10 hover:bg-aviation-accent/20 text-aviation-accent rounded border border-aviation-accent/30 text-[9px] font-bold transition-colors">
+                                                    <Plus className="w-2.5 h-2.5" />ADD
+                                                </button>
+                                            </div>
                                         </div>
                                         <AnimatePresence>
                                             {fixes.map((fix) => {
@@ -456,7 +453,7 @@ export function ColdWeather() {
                                                         initial={{ opacity: 0, y: -10 }}
                                                         animate={{ opacity: 1, y: 0 }}
                                                         exit={{ opacity: 0, scale: 0.95 }}
-                                                        className="grid grid-cols-12 gap-2 items-center bg-black/20 p-2 rounded-lg border border-white/5 group relative"
+                                                        className="grid grid-cols-12 gap-1 items-center bg-black/20 px-1 py-1 rounded-md border border-white/5 group relative"
                                                     >
                                                         <div className="col-span-4">
                                                             <input
@@ -464,7 +461,7 @@ export function ColdWeather() {
                                                                 value={fix.name}
                                                                 onChange={(e) => updateFix(fix.id, 'name', e.target.value)}
                                                                 placeholder="Fix"
-                                                                className="w-full bg-transparent border-none text-sm font-semibold text-white focus:outline-none placeholder-slate-600 truncate"
+                                                                className="w-full bg-transparent border-none text-xs font-semibold text-white focus:outline-none placeholder-slate-600 truncate"
                                                             />
                                                         </div>
                                                         <div className="col-span-3 flex justify-center">
@@ -473,18 +470,18 @@ export function ColdWeather() {
                                                                 value={fix.altitude}
                                                                 onChange={(e) => updateFix(fix.id, 'altitude', e.target.value)}
                                                                 placeholder="Alt"
-                                                                className="w-full max-w-[90px] text-center bg-black/40 border border-white/10 rounded-md px-2 py-1.5 text-sm font-mono text-white focus:outline-none focus:border-aviation-accent"
+                                                                className="w-full max-w-[80px] text-center bg-black/40 border border-white/10 rounded px-1.5 py-1 text-xs font-mono text-white focus:outline-none focus:border-aviation-accent"
                                                             />
                                                         </div>
                                                         <div className="col-span-3 flex items-center justify-center">
                                                             <div className={cn(
-                                                                "w-full max-w-[90px] text-center py-1.5 rounded-md font-mono text-sm font-bold shadow-inner bg-black/60",
+                                                                "w-full max-w-[80px] text-center py-1 rounded font-mono text-xs font-bold shadow-inner bg-black/60",
                                                                 corrected.disabled ? "text-slate-500 border border-white/5" : "text-aviation-accent border border-aviation-accent/30"
                                                             )}>
                                                                 {corrected.string}
                                                             </div>
                                                         </div>
-                                                        <div className="col-span-2 flex items-center justify-center">
+                                                        <div className="col-span-1 flex items-center justify-center">
                                                             <select
                                                                 value={fix.isFAF ? 'FAF' : fix.minimaType === 'DA' ? 'DA' : fix.minimaType === 'MDA' ? 'MDA' : 'FIX'}
                                                                 onChange={(e) => {
@@ -500,7 +497,7 @@ export function ColdWeather() {
                                                                     }
                                                                 }}
                                                                 className={cn(
-                                                                    "text-[10px] font-bold px-1 py-1 rounded border-none focus:outline-none appearance-none cursor-pointer text-center w-full",
+                                                                    "text-[9px] font-bold px-0.5 py-0.5 rounded border-none focus:outline-none appearance-none cursor-pointer text-center w-full",
                                                                     fix.isFAF ? "bg-yellow-500/20 text-yellow-500" :
                                                                         fix.minimaType === 'DA' ? "bg-orange-500/20 text-orange-500" :
                                                                             fix.minimaType === 'MDA' ? "bg-purple-500/20 text-purple-400" :
@@ -513,9 +510,11 @@ export function ColdWeather() {
                                                                 <option value="MDA">MDA</option>
                                                             </select>
                                                         </div>
-                                                        <button onClick={() => removeFix(fix.id)} className="absolute -left-3 -top-3 w-6 h-6 bg-red-500/90 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10 scale-75 hover:scale-100">
-                                                            <Trash2 className="w-3 h-3" />
-                                                        </button>
+                                                        <div className="col-span-1 flex justify-end">
+                                                            <button onClick={() => removeFix(fix.id)} className="w-5 h-5 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <Trash2 className="w-2.5 h-2.5" />
+                                                            </button>
+                                                        </div>
                                                     </motion.div>
                                                 )
                                             })}
@@ -529,19 +528,16 @@ export function ColdWeather() {
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -10 }}
                                     transition={{ duration: 0.2 }}
-                                >
-                                    <div className="flex justify-end mb-4">
-                                        <button onClick={addStepDown} className="flex items-center gap-1.5 px-3 py-1.5 bg-aviation-accent/10 hover:bg-aviation-accent/20 text-aviation-accent rounded-lg border border-aviation-accent/30 text-xs font-bold transition-colors">
-                                            <Plus className="w-3.5 h-3.5" />
-                                            ADD STEP
-                                        </button>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-500 uppercase px-2 text-center">
-                                            <div className="col-span-4">Distance</div>
-                                            <div className="col-span-4 text-center">Published</div>
-                                            <div className="col-span-4 text-aviation-accent text-center">Corrected</div>
+                                >                                    <div className="space-y-1.5">
+                                        <div className="grid grid-cols-12 gap-1 text-[9px] font-bold text-slate-500 uppercase px-1 text-center items-center">
+                                            <div className="col-span-3">Distance</div>
+                                            <div className="col-span-3 text-center">Published</div>
+                                            <div className="col-span-3 text-aviation-accent text-center">Corrected</div>
+                                            <div className="col-span-3 flex justify-end">
+                                                <button onClick={addStepDown} className="flex items-center gap-0.5 px-1.5 py-0.5 bg-aviation-accent/10 hover:bg-aviation-accent/20 text-aviation-accent rounded border border-aviation-accent/30 text-[9px] font-bold transition-colors">
+                                                    <Plus className="w-2.5 h-2.5" />ADD
+                                                </button>
+                                            </div>
                                         </div>
                                         <AnimatePresence>
                                             {stepDowns.map((sd) => {
@@ -552,39 +548,41 @@ export function ColdWeather() {
                                                         initial={{ opacity: 0, y: -10 }}
                                                         animate={{ opacity: 1, y: 0 }}
                                                         exit={{ opacity: 0, scale: 0.95 }}
-                                                        className="grid grid-cols-12 gap-2 items-center bg-black/20 p-2 rounded-lg border border-white/5 relative group"
+                                                        className="grid grid-cols-12 gap-1 items-center bg-black/20 px-1 py-1 rounded-md border border-white/5 group relative"
                                                     >
-                                                        <div className="col-span-4 flex items-center gap-1 justify-center">
-                                                            <span className="text-slate-500 font-mono text-xs pl-2">D</span>
+                                                        <div className="col-span-3 flex items-center gap-0.5 justify-center">
+                                                            <span className="text-slate-500 font-mono text-xs">D</span>
                                                             <input
                                                                 type="number"
                                                                 step="0.1"
                                                                 value={sd.distance}
                                                                 onChange={(e) => updateStepDown(sd.id, 'distance', e.target.value)}
                                                                 placeholder="2.0"
-                                                                className="w-full max-w-[70px] bg-transparent border-none text-sm font-semibold text-white focus:outline-none placeholder-slate-600 font-mono text-center px-1"
+                                                                className="w-full max-w-[60px] bg-transparent border-none text-xs font-semibold text-white focus:outline-none placeholder-slate-600 font-mono text-center px-0.5"
                                                             />
                                                         </div>
-                                                        <div className="col-span-4 flex justify-center">
+                                                        <div className="col-span-3 flex justify-center">
                                                             <input
                                                                 type="number"
                                                                 value={sd.altitude}
                                                                 onChange={(e) => updateStepDown(sd.id, 'altitude', e.target.value)}
                                                                 placeholder="Alt"
-                                                                className="w-full max-w-[90px] text-center bg-black/40 border border-white/10 rounded-md px-2 py-1.5 text-sm font-mono text-white focus:outline-none focus:border-aviation-accent"
+                                                                className="w-full max-w-[80px] text-center bg-black/40 border border-white/10 rounded px-1.5 py-1 text-xs font-mono text-white focus:outline-none focus:border-aviation-accent"
                                                             />
                                                         </div>
-                                                        <div className="col-span-4 flex items-center justify-center">
+                                                        <div className="col-span-3 flex items-center justify-center">
                                                             <div className={cn(
-                                                                "w-full max-w-[90px] text-center py-1.5 rounded-md font-mono text-sm font-bold shadow-inner bg-black/60",
+                                                                "w-full max-w-[80px] text-center py-1 rounded font-mono text-xs font-bold shadow-inner bg-black/60",
                                                                 corrected.disabled ? "text-slate-500 border border-white/5" : "text-aviation-accent border border-aviation-accent/30"
                                                             )}>
                                                                 {corrected.string}
                                                             </div>
                                                         </div>
-                                                        <button onClick={() => removeStepDown(sd.id)} className="absolute -left-3 -top-3 w-6 h-6 bg-red-500/90 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10 scale-75 hover:scale-100">
-                                                            <Trash2 className="w-3 h-3" />
-                                                        </button>
+                                                        <div className="col-span-3 flex justify-end">
+                                                            <button onClick={() => removeStepDown(sd.id)} className="w-5 h-5 bg-red-500/20 hover:bg-red-500/40 text-red-400 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <Trash2 className="w-2.5 h-2.5" />
+                                                            </button>
+                                                        </div>
                                                     </motion.div>
                                                 )
                                             })}

@@ -9,6 +9,7 @@ import { ColdWeather } from './components/ColdWeather'
 import { InflightRest } from './components/InflightRest'
 import { PAGuide } from './components/PAGuide'
 import { About } from './components/About'
+import { Manual } from './components/Manual'
 import type { AppSection } from './types';
 import { useStore } from './store/useStore'
 import './index.css'
@@ -31,6 +32,7 @@ function App() {
       case 'cold-weather': return <ColdWeather />;
       case 'inflight-rest': return <InflightRest />;
       case 'pa-guide': return <PAGuide />;
+      case 'manual': return <Manual />;
       case 'about': return <About />;
       default: return (
         <div className="flex-1 flex flex-col items-center justify-center text-slate-500">

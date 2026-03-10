@@ -59,7 +59,7 @@ export const TechLog: React.FC = () => {
 
     if (!flightData) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 glass-panel p-8">
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-500 glass-panel !p-0 p-8">
                 <Fuel className="w-12 h-12 mb-4 opacity-20" />
                 <p className="text-sm font-medium">Please load a flight plan in the Flight Init tab first.</p>
             </div>
@@ -111,9 +111,17 @@ export const TechLog: React.FC = () => {
     };
 
     return (
-        <div className="flex-1 flex flex-col gap-3 min-h-0">
+        <div className="flex-1 flex flex-col gap-4 md:gap-6 min-h-0">
+            <section className="shrink-0">
+                <h3 className="text-sm md:text-base font-bold text-white mb-0.5">TechLog & Fuel Monitoring</h3>
+                <p className="text-slate-400 text-[10px] md:text-xs">Record fuel uplifts and calculate loading discrepancies.</p>
+            </section>
 
-            <div className="flex-1 glass-panel overflow-hidden flex flex-col min-h-0 border-t-2 border-t-aviation-accent max-w-xl mx-auto w-full">
+            <div className="glass-panel !p-0 overflow-hidden flex flex-col min-h-0 max-w-xl mx-auto w-full">
+                <div className="px-1.5 py-1 bg-aviation-accent/5 border-b border-white/5 flex items-center gap-1.5 shrink-0">
+                    <ArrowRightLeft className="w-3 h-3 text-aviation-accent" />
+                    <h4 className="font-bold text-aviation-accent uppercase tracking-widest text-[10px] md:text-[11px]">Fuel Discrepancy</h4>
+                </div>
                 <div className="flex-1 p-2 md:p-3 flex flex-col overflow-y-auto custom-scrollbar">
 
                     {/* 2-Column Grid filling vertical space */}
@@ -185,7 +193,7 @@ export const TechLog: React.FC = () => {
                         {error && (
                             <div className="flex items-center gap-2 text-aviation-warning bg-aviation-warning/10 border border-aviation-warning/30 px-3 py-1.5 rounded-lg w-full max-w-[260px] justify-center">
                                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                                <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-wide">{error}</span>
+                                <span className="text-xs md:text-xs font-bold uppercase tracking-wide">{error}</span>
                             </div>
                         )}
 
@@ -251,7 +259,7 @@ function InputField({ label, value, onChange, placeholder = "ENTER VALUE" }: { l
     return (
         <div className="bg-white/5 rounded-md border border-white/5 overflow-hidden focus-within:border-aviation-accent/50 transition-colors w-full">
             <div className="px-2 py-1 bg-black/40 border-b border-white/5">
-                <label className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</label>
             </div>
             <input
                 type="text"
@@ -269,7 +277,7 @@ function CalculatedField({ label, formula, value }: { label: string, formula: st
     return (
         <div className="bg-transparent rounded-md border border-dashed border-white/20 overflow-hidden relative w-full">
             <div className="px-2 py-1 bg-black/20 flex justify-between items-center border-b border-dashed border-white/10">
-                <label className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">{label}</label>
                 <span className="text-[8px] md:text-[9px] font-mono text-slate-600 tracking-widest">{formula}</span>
             </div>
             <div className="px-2 py-1 text-xs md:text-sm font-mono font-bold text-aviation-accent/80">

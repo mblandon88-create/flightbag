@@ -7,6 +7,7 @@ export type AppSection =
     | 'cold-weather'
     | 'pa-guide'
     | 'inflight-rest'
+    | 'manual'
     | 'about';
 
 export interface Waypoint {
