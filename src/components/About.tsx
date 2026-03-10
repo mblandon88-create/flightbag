@@ -13,7 +13,6 @@ export const About: React.FC = () => {
 
     const roadmap = [
         { title: 'PA Guide Evaluation', status: 'Planned', desc: 'Evaluating if the Public Address (PA) guide should be refined or removed.' },
-        { title: 'Title Standardization', status: 'Planned', desc: 'Syncing all component titles to a unified aviation standard.' },
         { title: 'PDF Integration', status: 'Completed', desc: 'Robust dual-channel data extraction from LIDO flight plans (PDF/Clipboard).' },
     ];
 
