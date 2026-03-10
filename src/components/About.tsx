@@ -14,7 +14,7 @@ export const About: React.FC = () => {
     const roadmap = [
         { title: 'PA Guide Evaluation', status: 'Planned', desc: 'Evaluating if the Public Address (PA) guide should be refined or removed.' },
         { title: 'Title Standardization', status: 'Planned', desc: 'Syncing all component titles to a unified aviation standard.' },
-        { title: 'PDF Integration', status: 'Researching', desc: 'Enhanced data extraction from LIDO flight plans.' },
+        { title: 'PDF Integration', status: 'Completed', desc: 'Robust dual-channel data extraction from LIDO flight plans (PDF/Clipboard).' },
     ];
 
     const bookmarkletCode = "javascript:(function(){let t='';document.querySelectorAll('iframe').forEach(f=>{try{t+=f.contentDocument.body.innerText+'\\n'}catch(e){}});if(!t.trim())t=document.body.innerText;navigator.clipboard.writeText(t).then(()=>alert('OFP Copied! Now paste into EFB.')).catch(()=>alert('Copy failed.'))})();";
@@ -190,7 +190,7 @@ export const About: React.FC = () => {
                         <div className="p-4 space-y-4">
                             <div className="flex flex-col gap-1">
                                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Version</span>
-                                <span className="text-xl font-mono font-bold text-white">v1.2.4</span>
+                                <span className="text-xl font-mono font-bold text-white">v1.3.0</span>
                             </div>
                             <div className="flex flex-col gap-1">
                                 <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Environment</span>
@@ -198,8 +198,8 @@ export const About: React.FC = () => {
                             </div>
                             <div className="pt-2 border-t border-white/5">
                                 <p className="text-[10px] text-slate-500 leading-tight">
-                                    Build: 2026.03.08.1502<br />
-                                    Branch: master / revision: d816cf9
+                                    Build: 2026.03.10.0515<br />
+                                    Branch: master / revision: dual-parser-initial
                                 </p>
                             </div>
                         </div>
