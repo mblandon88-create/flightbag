@@ -10,11 +10,3 @@ export type AppSection =
     | 'manual'
     | 'about';
 
-export interface Waypoint {
-    name: string;
-    plnEta: string;
-    ata: string;
-    plnFuel: string;
-    actFuel: string;
-    diff: string;
-}

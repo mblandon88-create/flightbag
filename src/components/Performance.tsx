@@ -25,7 +25,7 @@ export const Performance: React.FC = () => {
 
 
     // Use raw values for precise internal calculations to avoid "double rounding"
-    const rawRampFuel = parseInt(flightData.rampFuel) || 0;
+    const rawRampFuel = (flightData.rawRampFuel ? parseInt(flightData.rawRampFuel) : parseInt(flightData.rampFuel)) || 0;
     const rawEzfw = parseInt(flightData.rawEzfw) || 0;
 
     // Displayed "Planned" values (already rounded in store)
@@ -40,8 +40,9 @@ export const Performance: React.FC = () => {
     const roundUp100 = (num: number) => Math.ceil(num / 100) * 100;
 
     // Calculate RTOW and ELW with conservative rounding (Sum raw, then round once)
-    const rTOW = roundUp100(actualEzfw + actualRampFuel - taxi);
-    const eLW = roundUp100(rTOW - trip);
+    const rawTOW = actualEzfw + actualRampFuel - taxi;
+    const rTOW = roundUp100(rawTOW);
+    const eLW = roundUp100(rawTOW - trip);
 
     // Decision Support: Max Allowable Fuel
     const maxFuelMtow = mtow - actualEzfw + taxi;

@@ -37,57 +37,42 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
     const [waypointInputs, setWaypointInputs] = useState<Record<number, WaypointInput>>(
         inflightData?.waypointInputs || {}
     );
-    const [directSegments, setDirectSegments] = useState<Array<{ from: number; to: number }>>([]);
+    const [directSegments, setDirectSegments] = useState<Array<{ from: number; to: number }>>(
+        inflightData?.directSegments || []
+    );
     const [editingWpIdx, setEditingWpIdx] = useState<number | null>(null);
     const [showDirectToPicker, setShowDirectToPicker] = useState(false);
     const [takeoffTime, setTakeoffTime] = useState<string>(
         inflightData?.takeoffTime || ''
     );
-    const tacticalRampFuel = (inflightData?.revisedRampFuel || flightData?.rampFuel || '0');
+    const tacticalRampFuel = (inflightData?.revisedRampFuel || flightData?.rawRampFuel || flightData?.rampFuel || '0');
     const taxiFuel = flightData?.taxiFuel || '0';
 
-    // Helper to round to nearest 100 kg
-    const round100 = (num: number) => Math.round(num / 100) * 100;
+    // Helper to round up to nearest 100 kg (Aviation standard for these displays)
+    const roundUp100 = (num: number) => Math.ceil(num / 100) * 100;
     
-    // Taxi is rounded to nearest 100 before subtraction
-    const roundedTaxiFuel = round100(parseInt(taxiFuel));
+    // Taxi is used precisely for Takeoff Fuel calculation
+    const preciseTaxiFuel = parseInt(taxiFuel);
 
-    // Tactical atf (Actual Takeoff Fuel) = (Revised Ramp OR Raw Ramp) - rounded Taxi
-    const tacticalAtfVal = parseInt(tacticalRampFuel) - roundedTaxiFuel;
+    // Tactical atf (Actual Takeoff Fuel) = (Revised Ramp OR Raw Ramp) - precise Taxi
+    const tacticalAtfVal = parseInt(tacticalRampFuel) - preciseTaxiFuel;
     const tacticalAtf = tacticalAtfVal.toString();
 
     const actualEzfw = (inflightData?.revisedEzfw || flightData?.rawEzfw || '0');
 
     // Tactical atow (Actual Takeoff Weight) = (Revised EZFW OR Raw EZFW) + Tactical ATF
     const tacticalAtowVal = parseInt(actualEzfw) + tacticalAtfVal;
-    const tacticalAtow = round100(tacticalAtowVal).toString();
-    const [atow, setAtow] = useState<string>(
-        inflightData?.atow || tacticalAtow
-    );
-    const [atf, setAtf] = useState<string>(
-        inflightData?.atf || tacticalAtf
-    );
+    const tacticalAtow = roundUp100(tacticalAtowVal).toString();
 
-    // Track the last seen tactical values to detect changes and sync state during render
-    const [prevTacticalAtow, setPrevTacticalAtow] = useState(tacticalAtow);
-    const [prevTacticalAtf, setPrevTacticalAtf] = useState(tacticalAtf);
+    // Bind seamlessly to global store directly to prevent local overwrite bugs
+    const effectiveAtow = inflightData?.atow || tacticalAtow;
+    const effectiveAtf = inflightData?.atf || tacticalAtf;
 
-    if (tacticalAtow !== prevTacticalAtow) {
-        setPrevTacticalAtow(tacticalAtow);
-        setAtow(tacticalAtow);
-    }
-    if (tacticalAtf !== prevTacticalAtf) {
-        setPrevTacticalAtf(tacticalAtf);
-        setAtf(tacticalAtf);
-    }
-
-    // Update inflightData in store when local state changes
+    // Update inflightData in store when local state changes (excluding atow/atf which bind directly)
     useEffect(() => {
         if (!flightData) return;
-        const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
-        const effectiveAtow = isOverMTOW ? (inflightData?.atow || tacticalAtow) : (atow || tacticalAtow);
-        setInflightData({ activeSubTab, waypointInputs, takeoffTime, atow: effectiveAtow, atf });
-    }, [activeSubTab, waypointInputs, takeoffTime, atow, atf, setInflightData, flightData, tacticalAtow, inflightData?.atow]);
+        setInflightData({ activeSubTab, waypointInputs, takeoffTime, directSegments });
+    }, [activeSubTab, waypointInputs, takeoffTime, directSegments, setInflightData, flightData]);
 
 
     const data = inflightData || {
@@ -116,26 +101,50 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
         return `${hh.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
     };
 
-    // Sync activeIndex with current time automatically using memoized calculation
-    const autoActiveIndex = React.useMemo(() => {
-        if (!flightData?.waypointEntries) return -1;
-        const nowNum = parseInt(currentTime, 10);
+    // Sync activeIndex with current time and logged progress automatically
+    const activeIndex = React.useMemo(() => {
+        if (!flightData?.waypointEntries || flightData.waypointEntries.length === 0) return -1;
+        
+        const nowH = parseInt(currentTime.substring(0, 2), 10);
+        const nowM = parseInt(currentTime.substring(2, 4), 10);
+        let nowTotalMins = nowH * 60 + nowM;
+
+        // Find the first waypoint whose ETA is >= current time AND hasn't been logged or skipped.
         for (let i = 0; i < flightData.waypointEntries.length; i++) {
             const wp = flightData.waypointEntries[i];
             if (wp.isFir) continue;
+
+            const input = waypointInputs[i];
+            const hasAta = input?.ata && input.ata.replace(':', '').length === 4;
+            if (hasAta) continue; // Skip waypoints we've already logged ATAs for
+
+            const isSkipped = directSegments.some(seg => i > seg.from && i < seg.to);
+            if (isSkipped) continue; // Skip waypoints currently bypassed by a Direct-To
+            
             const eta = calculateEta(takeoffTime, wp.stm);
             if (eta) {
-                const etaNum = parseInt(eta.replace(':', ''), 10);
-                if (etaNum >= nowNum) {
+                const etaH = parseInt(eta.substring(0, 2), 10);
+                const etaM = parseInt(eta.substring(3, 5), 10);
+                let etaTotalMins = etaH * 60 + etaM;
+
+                // Adjust for midnight crossing mathematically
+                if (etaTotalMins < nowTotalMins - 720) {
+                    etaTotalMins += 1440; // Add 24 hours
+                }
+                
+                if (etaTotalMins >= nowTotalMins) {
                     return i;
                 }
             }
         }
+        
+        // If we've passed all waypoints (or near the end), highlight the last valid one
+        for (let i = flightData.waypointEntries.length - 1; i >= 0; i--) {
+            if (!flightData.waypointEntries[i].isFir) return i;
+        }
+        
         return -1;
-    }, [flightData?.waypointEntries, takeoffTime, currentTime]);
-
-    const [manualActiveIndex, setManualActiveIndex] = useState<number | null>(null);
-    const activeIndex = manualActiveIndex !== null ? manualActiveIndex : autoActiveIndex;
+    }, [flightData?.waypointEntries, takeoffTime, currentTime, waypointInputs, directSegments]);
 
     useEffect(() => {
         if (activeSubTab === 'enroute' && activeIndex !== -1 && rowRefs.current[activeIndex]) {
@@ -299,7 +308,6 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                         key={absIdx}
                                                         onClick={() => {
                                                             setDirectSegments(prev => [...prev, { from: editingWpIdx, to: absIdx }]);
-                                                            setManualActiveIndex(editingWpIdx);
                                                             closeModal();
                                                         }}
                                                         className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 hover:bg-sky-500/10 border border-transparent hover:border-sky-500/30 transition-colors text-left"
@@ -478,18 +486,18 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                     <input
                                         type="text"
                                         inputMode="numeric"
-                                        value={formatNumber(atow)}
+                                        value={formatNumber(effectiveAtow)}
                                         onChange={(e) => {
                                             const rawValue = e.target.value.replace(/[^\d]/g, '');
-                                            setAtow(rawValue);
+                                            setInflightData({ atow: rawValue });
                                         }}
                                         placeholder={`e.g. ${flightData.etow}`}
                                         className={cn(
                                             "w-48 bg-black/40 border rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white",
-                                            atow && Number(atow) > Number(flightData.mtow) ? "border-red-500/50 bg-red-500/10" : "border-white/10"
+                                            effectiveAtow && Number(effectiveAtow) > Number(flightData.mtow) ? "border-red-500/50 bg-red-500/10" : "border-white/10"
                                         )}
                                     />
-                                    {atow && Number(atow) > Number(flightData.mtow) && (
+                                    {effectiveAtow && Number(effectiveAtow) > Number(flightData.mtow) && (
                                         <p className="text-[10px] font-bold text-red-500 uppercase mt-1 animate-pulse">
                                             EXCEEDS MTOW! ({formatNumber(flightData.mtow)})
                                         </p>
@@ -505,10 +513,10 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                     <input
                                         type="text"
                                         inputMode="numeric"
-                                        value={formatNumber(atf)}
+                                        value={formatNumber(effectiveAtf)}
                                         onChange={(e) => {
                                             const rawValue = e.target.value.replace(/[^\d]/g, '');
-                                            setAtf(rawValue);
+                                            setInflightData({ atf: rawValue });
                                         }}
                                         placeholder={`e.g. ${tacticalAtf}`}
                                         className="w-48 bg-black/40 border border-white/10 rounded-lg md:rounded-xl p-2 md:p-3 font-mono text-sm md:text-base focus:outline-none focus:border-aviation-accent text-white"
@@ -535,8 +543,8 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
 
                                 {(() => {
                                     if (!flightData) return null;
-                                    const isOverMTOW = atow && Number(atow) > Number(flightData.mtow);
-                                    const actualTOW = isOverMTOW ? Number(flightData.etow) : (parseFloat(atow) || Number(flightData.mtow));
+                                    const isOverMTOW = effectiveAtow && Number(effectiveAtow) > Number(flightData.mtow);
+                                    const actualTOW = isOverMTOW ? Number(flightData.etow) : (parseFloat(effectiveAtow) || Number(flightData.mtow));
                                     const mlw = Number(flightData.mlw) || 0;
 
                                     // To calculate fuel burn correctly, we need the planned fuel at the start of the nav log
@@ -622,8 +630,11 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                             const directFromSeg = directSegments.find(s => s.from === idx);
 
 
-                                                            const actualTakeoffFuel = parseFloat(atf) || Number(flightData.rampFuel);
-                                                            const planTofKg = parseInt(tacticalAtf);
+                                                            const firstWpWithFuel = waypointEntries.find(w => !w.isFir && w.rfob > 0);
+                                                            const startRfob = firstWpWithFuel ? firstWpWithFuel.rfob : 0;
+                                                            const actualTakeoffFuel = parseFloat(effectiveAtf) || Number(flightData.rampFuel) || 0;
+                                                            const planTofKg = startRfob * 1000;
+                                                            
                                                             const expectedFuel = wp.rfob > 0 ? wp.rfob + (actualTakeoffFuel - planTofKg) / 1000 : 0;
                                                             const actFuel = parseFloat(input.fuel);
                                                             const diff = !isNaN(actFuel) ? (actFuel - expectedFuel).toFixed(1) : null;
@@ -748,28 +759,30 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                             </div>
 
                             <div className="grid grid-cols-4 gap-1 py-0 px-1 bg-white/5 border-t border-white/5 shrink-0 w-full">
-                                {/* GW â€” live gross weight at current waypoint */}
+                                {/* GW — live gross weight at current waypoint */}
                                 {(() => {
-                                    const azfw = parseInt(atow || '0') - parseInt(atf || '0');
+                                    const azfw = parseInt(effectiveAtow || '0') - parseInt(effectiveAtf || '0');
                                     const wpes = flightData.waypointEntries || [];
 
-                                    // Determine current waypoint index
-                                    let currentWpIdx: number | null = manualActiveIndex;
-                                    if (currentWpIdx === null && takeoffTime) {
-                                        for (let i = 0; i < wpes.length; i++) {
-                                            if (wpes[i].isFir) continue;
-                                            const eta = calculateEta(takeoffTime, wpes[i].stm);
-                                            if (eta && eta >= currentTime) { currentWpIdx = i; break; }
-                                        }
-                                    }
+                                    // Use the robust activeIndex already calculated globally
+                                    const currentWpIdx = activeIndex !== -1 ? activeIndex : null;
 
-                                    // Fuel at current waypoint: actual if logged, else plan rfob
-                                    let fuelKg = parseInt(atf || '0'); // default = takeoff fuel
+                                    // Fuel at current waypoint: actual if logged, else plan rfob + takeoff delta
+                                    let fuelKg = parseInt(effectiveAtf || '0'); // default = takeoff fuel
                                     if (currentWpIdx !== null && wpes[currentWpIdx]) {
                                         const inp = waypointInputs[currentWpIdx];
-                                        fuelKg = inp?.fuel
-                                            ? Math.round(parseFloat(inp.fuel) * 1000)
-                                            : Math.round(wpes[currentWpIdx].rfob * 1000);
+                                        if (inp?.fuel) {
+                                            fuelKg = Math.round(parseFloat(inp.fuel) * 1000);
+                                        } else {
+                                            // Expected Fuel Logic (matches table rows)
+                                            const firstWpWithFuel = wpes.find(w => !w.isFir && w.rfob > 0);
+                                            const startRfob = firstWpWithFuel ? firstWpWithFuel.rfob : 0;
+                                            const actualTakeoffFuel = parseFloat(effectiveAtf) || Number(flightData.rampFuel) || 0;
+                                            const planTofKg = startRfob * 1000;
+                                            
+                                            const fuelDelta = (actualTakeoffFuel - planTofKg);
+                                            fuelKg = Math.round(wpes[currentWpIdx].rfob * 1000) + fuelDelta;
+                                        }
                                     }
 
                                     const gw = azfw + fuelKg;

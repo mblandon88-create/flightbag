@@ -26,7 +26,7 @@ function getDiscrepancyLimit(aircraftType: string, fobKg: number): number {
 }
 
 export const TechLog: React.FC = () => {
-    const { flightData, techLogData, setTechLogData } = useStore();
+    const { flightData, techLogData, setTechLogData, inflightData } = useStore();
     const {
         reqFuel, qtyBeforeRefuel, meteredUpliftLts, specificGravity, arrFuel, depFuel,
         reqUplift, meteredUpliftKg, fuelUsedOnGround, discrepancy, error
@@ -45,17 +45,18 @@ export const TechLog: React.FC = () => {
 
     const setError = (val: string | null) => setTechLogData({ error: val });
 
-    // Initialize default values from flight plan if available
+    // Keep the initial load populate logic for empty states just once
+    // (Live synchronization from Performance tab is handled by useStore.ts)
     useEffect(() => {
-        if (flightData && flightData.rampFuel) {
-            const ramp = parseInt(flightData.rampFuel).toString();
-            // Only set if they are currently empty so we don't overwrite user edits on every render
-            if (!reqFuel) setReqFuel(ramp);
-            if (!depFuel) setDepFuel(ramp);
+        if (!flightData) return;
+        const baseRampFuel = inflightData?.revisedRampFuel || flightData?.rawRampFuel || flightData?.rampFuel || '0';
+        if (baseRampFuel) {
+            const rampStringForInput = parseInt(baseRampFuel).toString();
+            if (!reqFuel) setReqFuel(rampStringForInput);
+            if (!depFuel) setDepFuel(rampStringForInput);
         }
-    }, [flightData, depFuel, reqFuel, setDepFuel, setReqFuel]);
-
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [flightData?.flightNumber]);
 
     if (!flightData) {
         return (

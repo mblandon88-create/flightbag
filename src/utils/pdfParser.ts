@@ -260,8 +260,6 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
         console.log(`[parseLidoText] No matching Ramp Fuel found (Matches: ${rampMatches.join(', ')}). Falling back to calculated sum: ${calculatedRampFuelVal}`);
     }
 
-    const bestRampMatch = round100(bestRampFuelRaw);
-
     const weightMatch = fullText.match(/MZFW\s+(\d+)\s+EZFW\s+(\d+)/i) || fullText.match(/MZFW\s+(\d+).*?EZFW\s+(\d+)/is);
     const mzfwStr = round100(weightMatch ? weightMatch[1] : (extractRegex(fullText, /MZFW\s+(\d+)/i) || '0'));
     const ezfwStr = round100(weightMatch ? weightMatch[2] : (extractRegex(fullText, /EZFW\s+(\d+)/i) || '0'));
@@ -269,7 +267,7 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
 
     // ETOW calculation: if not found, it must be (EZFW + Ramp Fuel - Taxi) -> must be rounded
     const etowRegexMatch = extractRegex(fullText, /ETOW\s+(\d+)/i);
-    const etowStr = etowRegexMatch ? round100(etowRegexMatch) : round100((parseInt(ezfwStr) + parseInt(bestRampMatch) - parseInt(taxiFuelStr)).toString());
+    const etowStr = etowRegexMatch ? round100(etowRegexMatch) : round100((parseInt(ezfwStr) + parseInt(bestRampFuelRaw) - parseInt(taxiFuelStr)).toString());
 
     const mlwStr = round100(extractRegex(fullText, /MLWT?\s+(\d+)/i) || extractRegex(fullText, /LAW\s+(\d+)/i) || '0');
 
@@ -321,7 +319,7 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
         arrival,
         destTimezoneOffset,
         tripFuel: tripFuelStr,
-        rampFuel: bestRampMatch, // Already rounded
+        rampFuel: bestRampFuelRaw,
         rawRampFuel: (rampMatches.length > 0 ? rampMatches[0].toString() : calculatedRampFuelVal.toString()),
         taxiFuel: taxiFuelStr,
         contingencyFuel: contingencyFuelStr,
@@ -464,15 +462,13 @@ export const parseLidoClipboard = (fullText: string): ParsedFlightData => {
         bestRampFuelRaw = closeMatch.toString();
     }
 
-    const bestRampMatch = round100(bestRampFuelRaw);
-
     const weightMatch = fullText.match(/MZFW\s+(\d+)\s+EZFW\s+(\d+)/i) || fullText.match(/MZFW\s+(\d+).*?EZFW\s+(\d+)/is);
     const mzfwStr = round100(weightMatch ? weightMatch[1] : (extractRegex(fullText, /MZFW\s+(\d+)/i) || '0'));
     const ezfwStr = round100(weightMatch ? weightMatch[2] : (extractRegex(fullText, /EZFW\s+(\d+)/i) || '0'));
     const mtowStr = round100(extractRegex(fullText, /MTOW\s+(\d+)/i) || '0');
 
     const etowRegexMatch = extractRegex(fullText, /ETOW\s+(\d+)/i);
-    const etowStr = etowRegexMatch ? round100(etowRegexMatch) : round100((parseInt(ezfwStr) + parseInt(bestRampMatch) - parseInt(taxiFuelStr)).toString());
+    const etowStr = etowRegexMatch ? round100(etowRegexMatch) : round100((parseInt(ezfwStr) + parseInt(bestRampFuelRaw) - parseInt(taxiFuelStr)).toString());
 
     const mlwStr = round100(extractRegex(fullText, /MLWT?\s+(\d+)/i) || extractRegex(fullText, /LAW\s+(\d+)/i) || '0');
 
@@ -517,7 +513,7 @@ export const parseLidoClipboard = (fullText: string): ParsedFlightData => {
         arrival,
         destTimezoneOffset,
         tripFuel: tripFuelStr,
-        rampFuel: bestRampMatch,
+        rampFuel: bestRampFuelRaw,
         rawRampFuel: (rampMatches.length > 0 ? rampMatches[0].toString() : calculatedRampFuelVal.toString()),
         taxiFuel: taxiFuelStr,
         contingencyFuel: contingencyFuelStr,
@@ -689,7 +685,11 @@ function extractNavLog(fullText: string, arrivalICAO: string, registration: stri
                 else if (!disRaw && /^\d{1,4}$/.test(t) && !IS_CTM.test(t)) disRaw = t;
 
                 if (j <= i + 4 && IS_ITT.test(t) && tokens[j + 1]?.toUpperCase() === '....') hasStartPattern = true;
-                if ((IS_STRUCTURAL_WPT(t) && t !== '....' && t !== 'TOC' && t !== 'TOD') || KNOWN_HEADERS.has(t)) break;
+                
+                // Stop if we hit what looks like the NEXT waypoint or a major section header
+                // We exclude common value labels like ELEV, AFOB, RFOB that might appear on the same line
+                const isValueLabel = ['ELEV', 'AFOB', 'RFOB', 'GS', 'TAS', 'DIS', 'SPD', 'MORA'].includes(t);
+                if ((IS_STRUCTURAL_WPT(t) && t !== '....' && t !== 'TOC' && t !== 'TOD') || (KNOWN_HEADERS.has(t) && !isValueLabel)) break;
             }
 
             // FILTER: Whitelist OR Special Signature OR Marker
@@ -713,7 +713,7 @@ function extractNavLog(fullText: string, arrivalICAO: string, registration: stri
                         pendingProcedure = ''; // Clear after attaching
                     } else if (hasStartPattern) {
                         entries.push({
-                            name: tokUp, stm: 0, rfob: 0,
+                            name: tokUp, stm: 0, rfob: rfobRaw ? parseFloat(rfobRaw) : 0,
                             isToc: false, isTod: false, isFir: false,
                             itt: ittRaw || '-', dis: disRaw || '-',
                             procedure: procToAttach

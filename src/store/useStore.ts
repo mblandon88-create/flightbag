@@ -57,6 +57,7 @@ export interface InflightData {
     revisedEzfw: string;
     revisedRampFuel: string;
     restData: RestData;
+    directSegments: Array<{ from: number; to: number }>;
 }
 
 const initialInflightData: InflightData = {
@@ -70,6 +71,7 @@ const initialInflightData: InflightData = {
     atf: '',
     revisedEzfw: '',
     revisedRampFuel: '',
+    directSegments: [],
     restData: {
         crewSize: '4',
         pattern: 'Half and Half',
@@ -127,9 +129,36 @@ export const useStore = create<EFBState>()(
             removeDGItem: (id) => set((state) => ({ dgItems: state.dgItems.filter(i => i.id !== id) })),
 
             inflightData: initialInflightData,
-            setInflightData: (data) => set((state) => ({
-                inflightData: { ...(state.inflightData || initialInflightData), ...data }
-            })),
+            setInflightData: (data) => set((state) => {
+                const nextInflightData = { ...(state.inflightData || initialInflightData), ...data };
+                
+                // Track if ramp fuel or ezfw changed explicitly to sync InflightDisplay
+                const rampFuelChanged = data.revisedRampFuel !== undefined && data.revisedRampFuel !== state.inflightData.revisedRampFuel;
+                const ezfwChanged = data.revisedEzfw !== undefined && data.revisedEzfw !== state.inflightData.revisedEzfw;
+
+                if (state.flightData && (rampFuelChanged || ezfwChanged)) {
+                    // When the user edits performance parameters, clear any manual
+                    // InflightDisplay overrides so it falls back to reacting dynamically
+                    nextInflightData.atf = '';
+                    nextInflightData.atow = '';
+                }
+
+                // Cross-sync: if revisedRampFuel is updated in Inflight/Performance tabs, automatically push to TechLog
+                const techLogUpdates: Partial<TechLogData> = {};
+                if (rampFuelChanged) {
+                    const actualRampFuel = data.revisedRampFuel || state.flightData?.rawRampFuel || state.flightData?.rampFuel || '0';
+                    const numRaw = parseInt(actualRampFuel).toString();
+                    if (actualRampFuel) {
+                        techLogUpdates.reqFuel = numRaw;
+                        techLogUpdates.depFuel = numRaw;
+                    }
+                }
+
+                return {
+                    inflightData: nextInflightData,
+                    techLogData: { ...(state.techLogData || initialTechLogData), ...techLogUpdates }
+                };
+            }),
         }),
         {
             name: 'eflightbag-storage', // unique name for local storage key
