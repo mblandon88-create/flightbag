@@ -59,6 +59,8 @@ export interface ParsedFlightData {
     extraTime: number; // minutes
     minReqTime: number; // minutes
     rampTime: number; // minutes
+    planRem: string;   // PLAN REM (tonnes)
+    planReq: string;   // PLAN REQ (tonnes)
     // Structured Nav Log
     waypointEntries: WaypointEntry[];
     // Legacy flat list (for backward compat)
@@ -276,6 +278,8 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
         || extractRegex(fullText, /\s(?:A3\d{2,3}[A-Z]?|B\d{3}[A-Z]?)\s+(A7[A-Z]{3})\b/i)
         || 'Unknown';
 
+
+
     // Extract structured nav log entries, stopping at arrival ICAO
     const waypointEntries = extractNavLog(fullText, arrival, registration);
 
@@ -351,6 +355,7 @@ export const parseLidoText = (fullText: string): ParsedFlightData => {
         waypointEntries,
         waypoints,
         remarks,
+        ...extractHeaderAddons(fullText)
     };
 };
 
@@ -479,6 +484,8 @@ export const parseLidoClipboard = (fullText: string): ParsedFlightData => {
         || extractRegex(fullText, /\s(?:A3[\dK]{2,3}[A-Z]?|B\d{3}[A-Z]?|A[A-Z0-9]{3})\s+(A7[A-Z]{3})\b/i) // E.g. A35K A7ANF
         || 'Unknown';
 
+
+
     const waypointEntries = extractNavLog(fullText, arrival, registration);
     const waypoints = waypointEntries.filter(e => !e.isFir).map(e => e.name);
 
@@ -545,6 +552,7 @@ export const parseLidoClipboard = (fullText: string): ParsedFlightData => {
         waypointEntries,
         waypoints,
         remarks,
+        ...extractHeaderAddons(fullText)
     };
 };
 
@@ -822,3 +830,12 @@ const extractRoute = (text: string, departure?: string, arrival?: string): strin
 
     return null;
 };
+
+/**
+ * Extracts PLAN REM and PLAN REQ from the flight plan text.
+ */
+export function extractHeaderAddons(text: string): { planRem: string; planReq: string } {
+    const planRem = extractRegex(text, /PLAN\s+REM\s+(\d+\.\d+)/i) || '-';
+    const planReq = extractRegex(text, /PLAN\s+REQ\s+(\d+\.\d+)/i) || '-';
+    return { planRem, planReq };
+}

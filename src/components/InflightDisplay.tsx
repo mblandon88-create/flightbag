@@ -615,7 +615,12 @@ export const InflightDisplay: React.FC<InflightDisplayProps> = ({ initialSubTab 
                                                             <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">ATA (Z)</th>
                                                             <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">PLN Fuel</th>
                                                             <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">ACT Fuel</th>
-                                                            <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">Diff</th>
+                                                            <th className="px-2 py-1 text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-slate-500 text-center">
+                                                                <div className="flex flex-col leading-tight">
+                                                                    <span>PLAN REM: {flightData.planRem || '-'}</span>
+                                                                    <span>PLAN REQ: {flightData.planReq || '-'}</span>
+                                                                </div>
+                                                            </th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-white/5">
