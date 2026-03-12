@@ -34,3 +34,4 @@ lint_results*.json
 dist/
 node_modules/
 .DS_Store
+FUTURE_FEATURES.md
